@@ -8,7 +8,7 @@ typedef uint32_t nnl_addr_t;
 
 #ifndef NNL_TREE_DEF
 // Tree root address
-extern const nnl_addr_t nnl_root;
+extern const nnl_addr_t nnl_root, nnl_invalid;
 #endif	/* NNL_TREE_DEF */
 
 // Subset-Difference UV structure

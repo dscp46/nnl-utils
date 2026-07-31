@@ -39,7 +39,7 @@ inline static void nnl_build_mask( nnl_addr_t addr, uint32_t *mask, uint8_t *dep
 uint32_t nnl_tree_size( uint8_t scheme_depth)
 {
 	// assert( scheme_depth <= 8*sizeof(nnl_addr_t)-1 );
-	return ( 1 << (scheme_depth+1) ) - 1;
+	return ( (uint32_t)1 << (scheme_depth+1) ) - 1;
 }
 
 uint32_t nnl_tree_offset( nnl_addr_t node_addr)
@@ -80,7 +80,7 @@ int nnl_decode_uv( const nnl_sd_t *sd, nnl_addr_t *u, nnl_addr_t *v)
 	nnl_addr_t v_mask = (nnl_addr_t)-1;
 	nnl_build_mask( sd->uv, &v_mask, NULL, NULL);
 
-	*u = (sd->uv & u_mask) | ( 1 << (sd->u_shift - 1) );
+	*u = (sd->uv & u_mask) | ( (nnl_addr_t)1 << (sd->u_shift - 1) );
 	*v = sd->uv;
 
 	// Error if V isn't covered by U
@@ -103,10 +103,10 @@ uint8_t nnl_depth( nnl_addr_t u)
 uint32_t nnl_nb_leaves( nnl_addr_t u, uint8_t scheme_depth)
 {
 	// assert( scheme_depth < 8*sizeof(nnl_addr_t) );
-	return 1 << ( scheme_depth - nnl_depth(u) );
+	return (uint32_t)1 << ( scheme_depth - nnl_depth(u) );
 }
 
-nnl_state_t nnl_node_state( nnl_addr_t u, uint8_t scheme_depth, uint32_t *rvk_tree)
+nnl_state_t nnl_node_state( nnl_addr_t u, uint8_t scheme_depth, const uint32_t *rvk_tree)
 {
 	uint32_t offset = nnl_tree_offset( u);
 	if( !rvk_tree )

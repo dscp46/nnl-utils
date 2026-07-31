@@ -31,6 +31,6 @@ int nnl_decode_uv( const nnl_sd_t *sd, nnl_addr_t *u, nnl_addr_t *v);
 
 uint8_t nnl_depth( nnl_addr_t u);
 uint32_t nnl_nb_leaves( nnl_addr_t u, uint8_t scheme_depth);
-nnl_state_t nnl_node_state( nnl_addr_t u, uint8_t scheme_depth, uint32_t *rvk_tree);
+nnl_state_t nnl_node_state( nnl_addr_t u, uint8_t scheme_depth, const uint32_t *rvk_tree);
 
 #endif	/* NNL_TREE_H */

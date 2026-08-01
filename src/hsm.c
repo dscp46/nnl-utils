@@ -269,7 +269,7 @@ int hsm_derive_node_key( hsm_t *hsm, nnl_addr_t addr, CK_BYTE dk[AES_128_SZ])
 		carry = acc >> 8;
 	}
 
-	// AES-D( seed, Km); Km being stored into the HSM
+	// AES-D( seed, Kr); Kr being stored into the HSM
 	if( !hsm_aes_d( hsm, seed, dk) )
 		return 0; // hsm->errno set by hsm_aes_d()
 

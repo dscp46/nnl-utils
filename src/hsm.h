@@ -12,7 +12,7 @@ struct hsm_ctx {
 	CK_OBJECT_HANDLE key;
 	CK_MECHANISM_TYPE mech_type;
 	void *module_handle;
-	int errno;
+	int err_no;
 };
 
 int hsm_init( const char *module_path, const char *user_pin, const char *token_label, const char *key_label, hsm_t* hsm);

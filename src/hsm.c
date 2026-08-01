@@ -143,19 +143,19 @@ int hsm_init( const char *module_path, const char *user_pin, const char *token_l
 
 	if(!module_path)
 	{
-		hsm->errno = HSM_ERR_MODPATH_UNSET;
+		hsm->err_no = HSM_ERR_MODPATH_UNSET;
 		return 0;
 	}
 
 	if(!user_pin)
 	{
-		hsm->errno = HSM_ERR_PIN_UNSET;
+		hsm->err_no = HSM_ERR_PIN_UNSET;
 		return 0;
 	}
 
 	if(!key_label)
 	{
-		hsm->errno = HSM_ERR_KEYLABEL_UNSET;
+		hsm->err_no = HSM_ERR_KEYLABEL_UNSET;
 		return 0;
 	}
 

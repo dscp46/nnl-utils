@@ -1,44 +1,66 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <inttypes.h>
+#include <string.h>
+#include <termios.h>
+#include <unistd.h>
 
+#include "hsm.h"
 #include "nnl_tree.h"
+
+int get_user_pin( char *user_pin, size_t user_pin_len)
+{
+	struct termios oldt, newt;
+	int success = 0;
+	tcgetattr( STDIN_FILENO, &oldt);
+
+	newt = oldt;
+	newt.c_lflag &= ~(ECHO);
+	tcsetattr( STDIN_FILENO, TCSANOW, &newt);
+
+	printf( "Enter user PIN: ");
+	fflush( stdout);
+
+	if ( fgets( user_pin, user_pin_len, stdin) != NULL) {
+		success = 1;
+	}
+
+	tcsetattr( STDIN_FILENO, TCSANOW, &oldt);
+	printf("\n");
+	return success;
+}
 
 int main( int argc, char *argv[], char *envp[])
 {
-	printf( "Tree size (3): %" PRIu32 "\n", nnl_tree_size( 3));
-	printf( "Offset( 101/3): %" PRIu32 "\n", nnl_tree_offset(0xB0000000));
+	char user_pin[257];
+	char *p11_module_path = NULL;
+	char *token_label = NULL;
+	char *key_label = NULL;
 
-	nnl_addr_t u = 0xB0000000;
-	nnl_addr_t v = 0xA2D80000;
-	nnl_addr_t u_prime, v_prime;
-	nnl_sd_t uv;
-
-	if(!nnl_encode_uv( u, v, &uv))
+	hsm_t *hsm = (hsm_t*) malloc( sizeof( hsm_t));
+	if(!hsm)
 	{
-		fprintf( stderr, "Failed to encode UV for U: 0x%" PRIx32 ", V: 0x%" PRIx32 "\n", u, v);
+		fprintf( stderr, "malloc failed while allocating hsm_t.\n");
+		return -1;
+	}
+
+	if(!get_user_pin( user_pin, sizeof( user_pin)))
+	{
+		fprintf( stderr, "Failed to get user pin.\n");
+		free( hsm);
 		return 1;
 	}
 
-	if(!nnl_decode_uv( &uv, &u_prime, &v_prime))
+	if(!hsm_init( p11_module_path, user_pin, token_label, key_label, hsm))
 	{
-		fprintf( stderr, "Failed to decode UV for UV: 0x%" PRIx32 ", U_shift: 0x%x\n", uv.uv, uv.u_shift);
-		return 1;
+		fprintf( stderr, "Failed to bind HSM.\n");
+		explicit_bzero( user_pin, sizeof( user_pin));
+		return 2;
 	}
 
-	if( u != u_prime || v != v_prime )
-	{
-		fprintf( stderr, "U (0x%" PRIx32") != U' (0x%"PRIx32")\n", u, u_prime);
-		return 1;
-	}
+	explicit_bzero( user_pin, sizeof( user_pin));
 
-	if( v != v_prime )
-	{
-		fprintf( stderr, "V (0x%" PRIx32") != V' (0x%"PRIx32")\n", v, v_prime);
-		return 1;
-	}
 
-	printf( "UV: 0x%" PRIx32 ", U_shift: 0x%x\n", uv.uv, uv.u_shift);
-
+	hsm_close( hsm);
+	free( hsm);
 	return 0;
 }

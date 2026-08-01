@@ -257,7 +257,7 @@ int hsm_derive_node_key( hsm_t *hsm, nnl_addr_t addr, CK_BYTE dk[AES_128_SZ])
 	uint64_t wide_addr = (uint64_t) addr;
 	
 	// Load d_0 into the seed
-	memcpy( seed, d_0, sizeof( AES_128_SZ));
+	memcpy( seed, d_0, AES_128_SZ);
 
 	// Add our node address to the seed
 	for( int i = AES_128_SZ-1; i>=0; --i)

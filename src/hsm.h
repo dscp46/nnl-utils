@@ -18,6 +18,7 @@ struct hsm_ctx {
 int hsm_init( const char *module_path, const char *user_pin, const char *token_label, const char *key_label, hsm_t* hsm);
 void hsm_close( hsm_t *hsm);
 
+// Derive a node key from the scheme root key. Dk must be zeroized after use.
 int hsm_derive_node_key( hsm_t *hsm, nnl_addr_t addr, CK_BYTE dk[AES_128_SZ]);
 
 #endif	/* HSM_H */

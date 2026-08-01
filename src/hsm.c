@@ -273,7 +273,7 @@ int hsm_derive_node_key( hsm_t *hsm, nnl_addr_t addr, CK_BYTE dk[AES_128_SZ])
 	if( !hsm_aes_d( hsm, seed, dk) )
 		return 0; // hsm->errno set by hsm_aes_d()
 
-	// AES-G := AES-D( seed, Km) ^ seed;
+	// AES-G := AES-D( seed, Kr) ^ seed;
 	for( int i = 0; i < AES_128_SZ; ++i)
 		dk[i] ^= seed[i];
 

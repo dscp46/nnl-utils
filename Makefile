@@ -1,6 +1,6 @@
 BUILDDIR=./build
 SRCDIR=./src
-#LIBS=-lcrypto -lssl
+LIBS=-lcrypto -lssl
 CCFLAGS+=-Wall -g
 INCLUDES+=$(shell pkg-config --cflags p11-kit-1)
 CC=gcc

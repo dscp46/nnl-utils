@@ -5,10 +5,10 @@
 
 static void usage( const char *name)
 {
-	fprintf( stderr, "Usage: %s args\n", name);
-	fprintf( stderr, "  %20s %s\n", "-k label",      "Scheme root key [Kr] name (required)");
-	fprintf( stderr, "  %20s %s\n", "-p p11_mod.so", "Path to PKCS#11 module (required)");
-	fprintf( stderr, "  %20s %s\n", "-t token_name", "HSM Token selector (required)");
+	fprintf( stderr, "Usage: %s <args>\n\n", name);
+	fprintf( stderr, "  %-20s %s\n", "-k <label>",      "Scheme root key [Kr] name (required)");
+	fprintf( stderr, "  %-20s %s\n", "-p <p11_mod.so>", "Path to PKCS#11 module (required)");
+	fprintf( stderr, "  %-20s %s\n", "-t <token_name>", "HSM Token selector (required)");
 }
 
 int parse_args( int argc, char *argv[], char *envp[], settings_t *cfg)

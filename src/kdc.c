@@ -6,6 +6,7 @@
 
 #include "hsm.h"
 #include "nnl_tree.h"
+#include "settings.h"
 
 int get_user_pin( char *user_pin, size_t user_pin_len)
 {
@@ -32,10 +33,11 @@ int get_user_pin( char *user_pin, size_t user_pin_len)
 int main( int argc, char *argv[], char *envp[])
 {
 	char user_pin[257];
-	char *p11_module_path = NULL;
-	char *token_label = NULL;
-	char *key_label = NULL;
+	settings_t cfg;
 
+	if(!parse_args( argc, argv, envp, &cfg))
+		return 1;
+	
 	hsm_t *hsm = (hsm_t*) malloc( sizeof( hsm_t));
 	if(!hsm)
 	{
@@ -50,7 +52,7 @@ int main( int argc, char *argv[], char *envp[])
 		return 1;
 	}
 
-	if(!hsm_init( p11_module_path, user_pin, token_label, key_label, hsm))
+	if(!hsm_init( cfg.p11_module_path, user_pin, cfg.token_label, cfg.key_label, hsm))
 	{
 		fprintf( stderr, "Failed to bind HSM.\n");
 		explicit_bzero( user_pin, sizeof( user_pin));

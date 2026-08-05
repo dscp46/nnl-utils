@@ -24,4 +24,19 @@ typedef enum {
 	NNL_ST_REVOKED
 } nnl_state_t;
 
+typedef struct nnl_tree nnl_tree_t;
+struct nnl_tree {
+	// Depth of the partition roots.
+	uint8_t partition_depth;
+	// Length of node addresses
+	uint8_t scheme_depth;
+	// Revocation tree
+	uint32_t *rvk_tree;
+
+	void (*free)( nnl_tree_t *self);
+	void (*generate_sd_tree)( nnl_tree_t *self);
+	void (*revoke_node)( nnl_tree_t *self, nnl_addr_t addr);
+};
+
+
 #endif	/* NNL_TYPES_H */

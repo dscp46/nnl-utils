@@ -3,6 +3,7 @@
 
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <utstack.h>
 
@@ -11,6 +12,11 @@ const nnl_addr_t nnl_root    = 0x80000000;
 
 // Invalid address
 const nnl_addr_t nnl_invalid = 0x00000000;
+
+// Function definitions
+static void nnl_tree_free( nnl_tree_t *tree);
+static void nnl_tree_generate_sd_tree( nnl_tree_t *self);
+static void nnl_tree_revoke_node( nnl_tree_t *self, nnl_addr_t addr);
 
 inline static void nnl_build_mask( nnl_addr_t addr, uint32_t *mask, uint8_t *depth, uint8_t *shift)
 {
@@ -124,9 +130,18 @@ nnl_state_t nnl_node_state( nnl_addr_t u, uint8_t scheme_depth, const uint32_t *
 	return NNL_ST_MIXED;
 }
 
-/** [!PSEUDO-CODE]
-cover_tree()
+static void nnl_tree_revoke_node( nnl_tree_t *self, nnl_addr_t addr)
 {
+	if( !self || addr == nnl_invalid )
+		return;
+}
+
+static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
+{
+	if( !self )
+		return;
+
+	/** [!PSEUDO-CODE] **
 	nnl_addr_t cur, i, left_child, right_child, *stack = NULL;
 	nnl_state_t cur_state, left_state, right_state;
 
@@ -190,8 +205,41 @@ cover_tree()
 			}
 		}
 	}
+	**/
 }
- **/
+
+nnl_tree_t* nnl_tree_init( uint8_t scheme_depth, uint8_t partition_depth)
+{
+	if( scheme_depth < 2 || scheme_depth >= 31 || (partition_depth >= (scheme_depth-2)) )
+		return NULL;
+
+	nnl_tree_t *instance = (nnl_tree_t*) malloc( sizeof( nnl_tree_t));
+	if( !instance )
+		return NULL;
+
+	//TODO: add a warning when scheme_depth-partition_depth exceeds a resource threshold
+
+	instance->partition_depth = partition_depth;
+	instance->scheme_depth = scheme_depth;
+	instance->rvk_tree = calloc( sizeof( uint32_t), nnl_tree_size( scheme_depth-partition_depth));
+
+	instance->free = nnl_tree_free;
+	instance->generate_sd_tree = nnl_tree_generate_sd_tree;
+	instance->revoke_node = nnl_tree_revoke_node;
+
+	return instance;
+}
+
+static void nnl_tree_free( nnl_tree_t *self)
+{
+	if( !self )
+		return;
+
+	if( self->rvk_tree )
+		free( self->rvk_tree );
+
+	free( self);
+}
 
 int nnl_tree_runtests( void)
 {

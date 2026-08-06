@@ -45,11 +45,13 @@ int main( int argc, char *argv[], char *envp[])
 	tree->revoke_node( tree, 0x04000000); // Leaf 00000
 	tree->revoke_node( tree, 0x1C000000); // Leaf 00011
 	tree->revoke_node( tree, 0x24000000); // Leaf 00100
+	tree->revoke_node( tree, 0x4C000000); // Leaf 01001
+	tree->revoke_node( tree, 0x74000000); // Leaf 01110
+	tree->revoke_node( tree, 0x7C000000); // Leaf 01111
 	tree->revoke_node( tree, 0xE4000000); // Leaf 11100
 	tree->revoke_node( tree, 0xEC000000); // Leaf 11101
 	tree->revoke_node( tree, 0xF4000000); // Leaf 11110
 	tree->revoke_node( tree, 0xFC000000); // Leaf 11111
-
 
 	tree->print_rvk( tree);
 	tree->free( tree);

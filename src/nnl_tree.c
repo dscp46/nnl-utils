@@ -8,6 +8,8 @@
 #include <utarray.h>
 #include <utstack.h>
 
+#include "addr_item.h"
+
 // Tree root address
 const nnl_addr_t nnl_root    = 0x80000000;
 
@@ -184,6 +186,7 @@ static void nnl_tree_print_rvk( nnl_tree_t *self)
 			nodes_in_layer <<= 1;
 		}
 	}
+	printf( "\n");
 }
 
 static void nnl_tree_revoke_node( nnl_tree_t *self, nnl_addr_t addr)
@@ -215,29 +218,28 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 	if( !self )
 		return;
 
-	typedef struct addr_stack {
-		nnl_addr_t value;
-		struct addr_stack *next;
-	} addr_st_t;
-	addr_st_t *stack = NULL;
-
 	/** [!PSEUDO-CODE] **/
-	nnl_addr_t root = nnl_root, cur, i, left_child, right_child;
+	nnl_addr_t cur, i, left_child, right_child;
 	nnl_state_t cur_state, left_state, right_state;
 
 	UT_icd ut_sd_ent_icd;
 	UT_array *sd_tree;
 	utarray_new( sd_tree, &ut_sd_ent_icd);
 
-	//STACK_PUSH( stack, &root);
+	addr_item_t *stack = NULL, *cur_it;
+	STACK_PUSH( stack, addr_item_new( nnl_root));
 
 	while(!STACK_EMPTY( stack))
 	{
-		//STACK_POP( stack, cur);
+		STACK_POP( stack, cur_it);
+		cur = cur_it->value;
+		free( cur_it);
+
 		cur_state = nnl_node_state( cur, self->scheme_depth, self->rvk_tree);
 
 		if( cur_state == NNL_ST_VALID )
 		{
+			printf( "Emit T[%"PRIx32"]\n", cur);
 			//emit( T[cur] ); // aes_g3( G_DIR_PROCESS, node_key( cur), sd->key ); utarray_push_back( sd_tree, sd);
 			continue;
 		}
@@ -260,12 +262,14 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 
 			if( left_state == NNL_ST_REVOKED )
 			{
+				printf( "Emit T[%"PRIx32"] \\ T[%"PRIx32"]\n", i, left_child);
 				//emit_diff( i, left_child); // S{i,L} = T_i \ T_L
 				// ??? aes_g3( G_DIR_LEFT, node_key( i), sd->key ); utarray_push_back( sd_tree, sd);
 				i = right_child;
 			}
 			else if( right_state == NNL_ST_REVOKED )
 			{
+				printf( "Emit T[%"PRIx32"] \\ T[%"PRIx32"]\n", i, right_child);
 				//emit_diff( i, right_child); // S{i,R} = T_i \ T_R
 				// ??? aes_g3( G_DIR_RIGHT, node_key( i), sd->key ); utarray_push_back( sd_tree, sd);
 				i = left_child;
@@ -273,19 +277,20 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 			else
 			{
 				// Both children are MIXED
-				//STACK_PUSH( stack, left_child);
-				//STACK_PUSH( stack, right_child);
+				STACK_PUSH( stack, addr_item_new( left_child));
+				STACK_PUSH( stack, addr_item_new( right_child));
 				break;
 			}
 
 			if( nnl_node_state( i, self->scheme_depth, self->rvk_tree) == NNL_ST_VALID )
 			{
+				printf( "Emit T[%"PRIx32"]\n", cur);
 				//emit( T[i] ); // aes_g3( G_DIR_PROCESS, node_key( i), sd->key ); utarray_push_back( sd_tree, sd);
 				break;
 			}
 		}
 	}
-	/**/
+	// TODO: final stack cleanup to free leftovers in the stack	
 }
 
 nnl_tree_t* nnl_tree_init( uint8_t scheme_depth, uint8_t partition_depth)
@@ -398,6 +403,8 @@ int nnl_tree_runtests( void)
 
 	tree->print_rvk( tree);
 	tree->free( tree);
+
+	tree->generate_sd_tree( tree);
 
 	return 1;
 }

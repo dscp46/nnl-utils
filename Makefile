@@ -4,7 +4,7 @@ LIBS=-lcrypto -lssl
 CCFLAGS+=-Wall -g
 INCLUDES+=$(shell pkg-config --cflags p11-kit-1)
 CC=gcc
-kdc_objects=$(addprefix $(BUILDDIR)/, kdc.o hsm.o nnl_crypto.o nnl_tree.o settings.o)
+kdc_objects=$(addprefix $(BUILDDIR)/, kdc.o hsm.o addr_item.o nnl_crypto.o nnl_tree.o settings.o)
 
 all: kdc
 

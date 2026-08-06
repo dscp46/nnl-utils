@@ -151,6 +151,7 @@ nnl_state_t nnl_node_state( nnl_addr_t u, uint8_t scheme_depth, const uint32_t *
 		return NNL_ST_REVOKED; // FIXME
 	// assert( rvk_tree && (offset < (sizeof( rvk_tree ) / sizeof(uint32_t)))) ?
 
+	//printf( "state(%08" PRIx32 "): %s\n", u, (rvk_tree[offset] == 0)? "VALID" : (( rvk_tree[offset] == nnl_nb_leaves( u, scheme_depth) ) ? "REVOKED":"MIXED"));
 	if( rvk_tree[offset] == 0 )
 		return NNL_ST_VALID;
 
@@ -222,12 +223,14 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 	nnl_addr_t cur, i, left_child, right_child;
 	nnl_state_t cur_state, left_state, right_state;
 
+	/*
 	UT_icd ut_sd_ent_icd;
 	UT_array *sd_tree;
 	utarray_new( sd_tree, &ut_sd_ent_icd);
-
+	// */
 	addr_item_t *stack = NULL, *cur_it;
-	STACK_PUSH( stack, addr_item_new( nnl_root));
+
+	STACK_PUSH( stack, addr_item_new( nnl_root, stack));
 
 	while(!STACK_EMPTY( stack))
 	{
@@ -239,15 +242,17 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 
 		if( cur_state == NNL_ST_VALID )
 		{
-			printf( "Emit T[%"PRIx32"]\n", cur);
-			//emit( T[cur] ); // aes_g3( G_DIR_PROCESS, node_key( cur), sd->key ); utarray_push_back( sd_tree, sd);
+			// TODO: special case: root and valid => emit T{r} \ Ø if associated Dk is issued
 			continue;
 		}
 
 		if( cur_state == NNL_ST_REVOKED )
+		{
+			// TODO: if root and completely revoked: emit bogus C-value and emit UV with revoked flag
+			printf( "Emit T[%" PRIx32 "]\n", cur);
 			continue;
+		}
 
-		// cur is MIXED. Descend until the revoked region branches
 		i = cur;
 		while(1)
 		{
@@ -258,38 +263,45 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 			right_state = nnl_node_state( right_child, self->scheme_depth, self->rvk_tree);
 
 			if( left_state == NNL_ST_REVOKED && right_state == NNL_ST_REVOKED)
-				break; // Safeguard
+				break; // Safeguard, theorically unreachable
 
-			if( left_state == NNL_ST_REVOKED )
+			if( left_state == NNL_ST_VALID )
 			{
-				printf( "Emit T[%"PRIx32"] \\ T[%"PRIx32"]\n", i, left_child);
-				//emit_diff( i, left_child); // S{i,L} = T_i \ T_L
-				// ??? aes_g3( G_DIR_LEFT, node_key( i), sd->key ); utarray_push_back( sd_tree, sd);
+				if( right_state == NNL_ST_REVOKED )
+				{
+					printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"]\n", cur, right_child);
+					//emit_diff( i, right_child); // S{i,R} = T_i \ T_R
+					// ??? aes_g3( G_DIR_RIGHT, node_key( i), sd->key ); utarray_push_back( sd_tree, sd);
+					break;
+				}
+				// Right is mixed, go right
 				i = right_child;
+				//printf( "Branch right (%08"PRIx32").\n", i);
+				continue;
 			}
-			else if( right_state == NNL_ST_REVOKED )
+			else if( right_state == NNL_ST_VALID )
 			{
-				printf( "Emit T[%"PRIx32"] \\ T[%"PRIx32"]\n", i, right_child);
-				//emit_diff( i, right_child); // S{i,R} = T_i \ T_R
-				// ??? aes_g3( G_DIR_RIGHT, node_key( i), sd->key ); utarray_push_back( sd_tree, sd);
+				if( left_state == NNL_ST_REVOKED )
+				{
+					printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"]\n", cur, left_child);
+					//emit_diff( i, left_child); // S{i,L} = T_i \ T_L
+					// ??? aes_g3( G_DIR_LEFT, node_key( i), sd->key ); utarray_push_back( sd_tree, sd);
+					break;
+				}
+				// Left is mixed, go right
 				i = left_child;
-			}
-			else
-			{
-				// Both children are MIXED
-				STACK_PUSH( stack, addr_item_new( left_child));
-				STACK_PUSH( stack, addr_item_new( right_child));
-				break;
+				//printf( "Branch left. (%08"PRIx32")\n", i);
+				continue;
 			}
 
-			if( nnl_node_state( i, self->scheme_depth, self->rvk_tree) == NNL_ST_VALID )
-			{
-				printf( "Emit T[%"PRIx32"]\n", cur);
-				//emit( T[i] ); // aes_g3( G_DIR_PROCESS, node_key( i), sd->key ); utarray_push_back( sd_tree, sd);
-				break;
-			}
+			// Subset-difference not applicable
+			//printf( "SD not applicable, go 1 level down.\n");
+			STACK_PUSH( stack, addr_item_new( right_child, stack));
+			STACK_PUSH( stack, addr_item_new( left_child, stack));
+			break;
 		}
 	}
+	printf("done\n");
 	// TODO: final stack cleanup to free leftovers in the stack	
 }
 
@@ -391,6 +403,31 @@ int nnl_tree_runtests( void)
 	}
 
 	tree->revoke_node( tree, 0x04000000); // Leaf 00000
+	tree->print_rvk( tree);
+	tree->generate_sd_tree( tree);
+	tree->free( tree);
+
+
+	tree = nnl_tree_init( 5, 0);
+	if( !tree )
+	{
+		printf( "Unable to allocate the toy tree");
+		return 0;
+	}
+	tree->revoke_node( tree, 0x4C000000); // Leaf 01001
+	tree->print_rvk( tree);
+	tree->generate_sd_tree( tree);
+	tree->free( tree);
+
+
+	tree = nnl_tree_init( 5, 0);
+	if( !tree )
+	{
+		printf( "Unable to allocate the toy tree");
+		return 0;
+	}
+
+	tree->revoke_node( tree, 0x04000000); // Leaf 00000
 	tree->revoke_node( tree, 0x1C000000); // Leaf 00011
 	tree->revoke_node( tree, 0x24000000); // Leaf 00100
 	tree->revoke_node( tree, 0x4C000000); // Leaf 01001
@@ -402,9 +439,8 @@ int nnl_tree_runtests( void)
 	tree->revoke_node( tree, 0xFC000000); // Leaf 11111
 
 	tree->print_rvk( tree);
-	tree->free( tree);
-
 	tree->generate_sd_tree( tree);
+	tree->free( tree);
 
 	return 1;
 }

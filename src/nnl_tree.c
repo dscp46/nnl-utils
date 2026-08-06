@@ -134,6 +134,21 @@ static void nnl_tree_revoke_node( nnl_tree_t *self, nnl_addr_t addr)
 {
 	if( !self || addr == nnl_invalid )
 		return;
+	uint8_t depth, shift;
+	uint32_t mask;
+	nnl_build_mask( addr, &mask, &depth, &shift);
+
+	if( depth != self->scheme_depth )
+		return;
+
+	do
+	{
+		++(self->rvk_tree[ nnl_tree_offset( addr) ]);
+		mask <<=1;
+		addr &= mask;
+		addr |= (nnl_addr_t)1 << shift;
+	}
+	while( !mask );
 }
 
 static void nnl_tree_generate_sd_tree( nnl_tree_t *self)

@@ -13,6 +13,5 @@ uint8_t nnl_depth( nnl_addr_t u);
 uint32_t nnl_nb_leaves( nnl_addr_t u, uint8_t scheme_depth);
 nnl_state_t nnl_node_state( nnl_addr_t u, uint8_t scheme_depth, const uint32_t *rvk_tree);
 
-
 nnl_tree_t* nnl_tree_init( uint8_t scheme_depth, uint8_t partition_depth);
 #endif	/* NNL_TREE_H */

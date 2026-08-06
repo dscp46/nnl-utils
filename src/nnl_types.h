@@ -35,6 +35,7 @@ struct nnl_tree {
 
 	void (*free)( nnl_tree_t *self);
 	void (*generate_sd_tree)( nnl_tree_t *self);
+	void (*print_rvk)( nnl_tree_t *self);
 	void (*revoke_node)( nnl_tree_t *self, nnl_addr_t addr);
 };
 

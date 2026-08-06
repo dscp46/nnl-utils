@@ -130,6 +130,31 @@ nnl_state_t nnl_node_state( nnl_addr_t u, uint8_t scheme_depth, const uint32_t *
 	return NNL_ST_MIXED;
 }
 
+static void nnl_tree_print_rvk( nnl_tree_t *self)
+{
+	if( !self || !self->rvk_tree )
+	{
+		printf( "[nnl_tree_print_rvk()] NULL pointer somewhere, nothing to print.\n");
+		return;
+	}
+
+	uint8_t cur_depth;
+	uint32_t nb_nodes = nnl_tree_size( self->scheme_depth-self->partition_depth);
+	uint32_t nodes_in_layer = 1;
+	for( uint32_t i=0, j=0; i<nb_nodes; ++i)
+	{
+		++j;
+		printf( "%" PRIu32 " ", self->rvk_tree[i]);
+
+		if( j == nodes_in_layer )
+		{
+			printf("\n");
+			j=0;
+			nodes_in_layer <<= 1;
+		}
+	}
+}
+
 static void nnl_tree_revoke_node( nnl_tree_t *self, nnl_addr_t addr)
 {
 	if( !self || addr == nnl_invalid )
@@ -240,6 +265,7 @@ nnl_tree_t* nnl_tree_init( uint8_t scheme_depth, uint8_t partition_depth)
 
 	instance->free = nnl_tree_free;
 	instance->generate_sd_tree = nnl_tree_generate_sd_tree;
+	instance->print_rvk = nnl_tree_print_rvk;
 	instance->revoke_node = nnl_tree_revoke_node;
 
 	return instance;

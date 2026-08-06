@@ -35,9 +35,29 @@ int main( int argc, char *argv[], char *envp[])
 	char user_pin[257];
 	settings_t cfg;
 
+	nnl_tree_t *tree = nnl_tree_init( 5, 0);
+	if( !tree )
+	{
+		printf( "Unable to allocate the toy tree");
+		return 0;
+	}
+
+	tree->revoke_node( tree, 0x04000000); // Leaf 00000
+	tree->revoke_node( tree, 0x1C000000); // Leaf 00011
+	tree->revoke_node( tree, 0x24000000); // Leaf 00100
+	tree->revoke_node( tree, 0xE4000000); // Leaf 11100
+	tree->revoke_node( tree, 0xEC000000); // Leaf 11101
+	tree->revoke_node( tree, 0xF4000000); // Leaf 11110
+	tree->revoke_node( tree, 0xFC000000); // Leaf 11111
+
+
+	tree->print_rvk( tree);
+	tree->free( tree);
+
+	/*
 	if(!parse_args( argc, argv, envp, &cfg))
 		return 1;
-	
+
 	hsm_t *hsm = (hsm_t*) malloc( sizeof( hsm_t));
 	if(!hsm)
 	{
@@ -64,5 +84,6 @@ int main( int argc, char *argv[], char *envp[])
 
 	hsm_close( hsm);
 	free( hsm);
+	*/
 	return 0;
 }

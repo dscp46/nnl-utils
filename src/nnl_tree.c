@@ -138,9 +138,10 @@ static void nnl_tree_print_rvk( nnl_tree_t *self)
 		return;
 	}
 
-	uint8_t cur_depth;
+	uint8_t cur_depth = self->partition_depth;
 	uint32_t nb_nodes = nnl_tree_size( self->scheme_depth-self->partition_depth);
 	uint32_t nodes_in_layer = 1;
+	printf( "%u: ", self->partition_depth);
 	for( uint32_t i=0, j=0; i<nb_nodes; ++i)
 	{
 		++j;
@@ -148,7 +149,9 @@ static void nnl_tree_print_rvk( nnl_tree_t *self)
 
 		if( j == nodes_in_layer )
 		{
-			printf("\n");
+			++cur_depth;
+			if( cur_depth <= self->scheme_depth )
+				printf("\n%u: ", cur_depth);
 			j=0;
 			nodes_in_layer <<= 1;
 		}
@@ -171,9 +174,12 @@ static void nnl_tree_revoke_node( nnl_tree_t *self, nnl_addr_t addr)
 		++(self->rvk_tree[ nnl_tree_offset( addr) ]);
 		mask <<=1;
 		addr &= mask;
-		addr |= (nnl_addr_t)1 << shift;
+		addr |= (nnl_addr_t)1 << shift++;
 	}
-	while( !mask );
+	while( mask );
+	
+	// Increment root
+	++(self->rvk_tree[0]);
 }
 
 static void nnl_tree_generate_sd_tree( nnl_tree_t *self)

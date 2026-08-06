@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <utarray.h>
 #include <utstack.h>
 
 // Tree root address
@@ -58,6 +59,33 @@ uint32_t nnl_tree_offset( nnl_addr_t node_addr)
 
 	// assert( node_depth <= scheme_depth );
 	return nnl_tree_size( node_depth-1) + ( (node_addr & mask) >> (32-node_depth) );
+}
+
+inline nnl_addr_t nnl_left( nnl_addr_t u)
+{
+	if( u == nnl_invalid)
+		return nnl_invalid;
+
+	uint8_t shift;
+	nnl_addr_t mask;
+	nnl_build_mask( u, &mask, NULL, &shift);
+
+	u &= ~( (nnl_addr_t)1 << (shift-1) ); // Clear child addr
+	u |= (nnl_addr_t)1 << (shift-2) ; // Set mask bit
+	return u;
+}
+
+inline nnl_addr_t nnl_right( nnl_addr_t u)
+{
+	if( u == nnl_invalid)
+		return nnl_invalid;
+
+	uint8_t shift;
+	nnl_addr_t mask;
+	nnl_build_mask( u, &mask, NULL, &shift);
+
+	u |= (nnl_addr_t)3 << (shift-2) ; // Set child and mask bits
+	return u;
 }
 
 int nnl_encode_uv( nnl_addr_t u, nnl_addr_t v, nnl_sd_t *sd)
@@ -187,24 +215,30 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 	if( !self )
 		return;
 
-	/** [!PSEUDO-CODE] **
-	nnl_addr_t cur, i, left_child, right_child, *stack = NULL;
+	typedef struct addr_stack {
+		nnl_addr_t value;
+		struct addr_stack *next;
+	} addr_st_t;
+	addr_st_t *stack = NULL;
+
+	/** [!PSEUDO-CODE] **/
+	nnl_addr_t root = nnl_root, cur, i, left_child, right_child;
 	nnl_state_t cur_state, left_state, right_state;
 
-	UT_icd ud_sd_ent_icd;
+	UT_icd ut_sd_ent_icd;
 	UT_array *sd_tree;
-	utarray_new( sd_tree, &ut_sd_end_icd);
+	utarray_new( sd_tree, &ut_sd_ent_icd);
 
-	STACK_PUSH( stack, nnl_root);
+	//STACK_PUSH( stack, &root);
 
 	while(!STACK_EMPTY( stack))
 	{
-		STACK_POP( stack, cur);
-		cur_state = nnl_node_state( cur, scheme_depth, rvk_tree);
+		//STACK_POP( stack, cur);
+		cur_state = nnl_node_state( cur, self->scheme_depth, self->rvk_tree);
 
 		if( cur_state == NNL_ST_VALID )
 		{
-			emit( T[cur] ); // aes_g3( G_DIR_PROCESS, node_key( cur), sd->key ); utarray_push_back( sd_tree, sd);
+			//emit( T[cur] ); // aes_g3( G_DIR_PROCESS, node_key( cur), sd->key ); utarray_push_back( sd_tree, sd);
 			continue;
 		}
 
@@ -213,45 +247,45 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 
 		// cur is MIXED. Descend until the revoked region branches
 		i = cur;
-		while(true)
+		while(1)
 		{
 			left_child = nnl_left( i);
-			left_state = nnl_node_state( left_child, scheme_depth, rvk_tree);
+			left_state = nnl_node_state( left_child, self->scheme_depth, self->rvk_tree);
 
 			right_child = nnl_right( i);
-			right_state = nnl_node_state( right_child, scheme_depth, rvk_tree);
+			right_state = nnl_node_state( right_child, self->scheme_depth, self->rvk_tree);
 
 			if( left_state == NNL_ST_REVOKED && right_state == NNL_ST_REVOKED)
 				break; // Safeguard
 
 			if( left_state == NNL_ST_REVOKED )
 			{
-				emit_diff( i, left_child); // S{i,L} = T_i \ T_L
+				//emit_diff( i, left_child); // S{i,L} = T_i \ T_L
 				// ??? aes_g3( G_DIR_LEFT, node_key( i), sd->key ); utarray_push_back( sd_tree, sd);
 				i = right_child;
 			}
 			else if( right_state == NNL_ST_REVOKED )
 			{
-				emit_diff( i, right_child); // S{i,R} = T_i \ T_R
+				//emit_diff( i, right_child); // S{i,R} = T_i \ T_R
 				// ??? aes_g3( G_DIR_RIGHT, node_key( i), sd->key ); utarray_push_back( sd_tree, sd);
 				i = left_child;
 			}
 			else
 			{
 				// Both children are MIXED
-				STACK_PUSH( stack, left_child);
-				STACK_PUSH( stack, right_child);
+				//STACK_PUSH( stack, left_child);
+				//STACK_PUSH( stack, right_child);
 				break;
 			}
 
-			if( nnl_node_state( i, scheme_depth, rvk_tree) == NNL_ST_VALID )
+			if( nnl_node_state( i, self->scheme_depth, self->rvk_tree) == NNL_ST_VALID )
 			{
-				emit( T[i] ); // aes_g3( G_DIR_PROCESS, node_key( i), sd->key ); utarray_push_back( sd_tree, sd);
+				//emit( T[i] ); // aes_g3( G_DIR_PROCESS, node_key( i), sd->key ); utarray_push_back( sd_tree, sd);
 				break;
 			}
 		}
 	}
-	**/
+	/**/
 }
 
 nnl_tree_t* nnl_tree_init( uint8_t scheme_depth, uint8_t partition_depth)
@@ -298,30 +332,72 @@ int nnl_tree_runtests( void)
 	nnl_addr_t u_prime, v_prime;
 	nnl_sd_t uv;
 
+	if( nnl_left( nnl_root) != ( (nnl_addr_t)1 << ((8*sizeof(nnl_addr_t)-2)) ) )
+	{
+		fprintf( stderr, 
+			"nnl_left( root) failed. Got %" PRIx32 ", expected %" PRIx32 "\n",
+			nnl_left( nnl_root),
+		       (nnl_addr_t)1 << ((8*sizeof(nnl_addr_t)-2))
+		);
+		return 0;
+	}
+
+	if( nnl_right( nnl_root) != ( (nnl_addr_t)3 << ((8*sizeof(nnl_addr_t)-2)) ) )
+	{
+		fprintf( stderr, 
+			"nnl_left( root) failed. Got %" PRIx32 ", expected %" PRIx32 "\n",
+			nnl_left( nnl_root),
+		       (nnl_addr_t)3 << ((8*sizeof(nnl_addr_t)-2))
+		);
+		return 0;
+	}
+	
 	if(!nnl_encode_uv( u, v, &uv))
 	{
 		fprintf( stderr, "Failed to encode UV for U: 0x%" PRIx32 ", V: 0x%" PRIx32 "\n", u, v);
-		return 1;
+		return 0;
 	}
 
 	if(!nnl_decode_uv( &uv, &u_prime, &v_prime))
 	{
 		fprintf( stderr, "Failed to decode UV for UV: 0x%" PRIx32 ", U_shift: 0x%x\n", uv.uv, uv.u_shift);
-		return 1;
+		return 0;
 	}
 
 	if( u != u_prime || v != v_prime )
 	{
 		fprintf( stderr, "U (0x%" PRIx32") != U' (0x%"PRIx32")\n", u, u_prime);
-		return 1;
+		return 0;
 	}
 
 	if( v != v_prime )
 	{
 		fprintf( stderr, "V (0x%" PRIx32") != V' (0x%"PRIx32")\n", v, v_prime);
-		return 1;
+		return 0;
 	}
 
 	printf( "UV: 0x%" PRIx32 ", U_shift: 0x%x\n", uv.uv, uv.u_shift);
-	return 0;
+
+	nnl_tree_t *tree = nnl_tree_init( 5, 0);
+	if( !tree )
+	{
+		printf( "Unable to allocate the toy tree");
+		return 0;
+	}
+
+	tree->revoke_node( tree, 0x04000000); // Leaf 00000
+	tree->revoke_node( tree, 0x1C000000); // Leaf 00011
+	tree->revoke_node( tree, 0x24000000); // Leaf 00100
+	tree->revoke_node( tree, 0x4C000000); // Leaf 01001
+	tree->revoke_node( tree, 0x74000000); // Leaf 01110
+	tree->revoke_node( tree, 0x7C000000); // Leaf 01111
+	tree->revoke_node( tree, 0xE4000000); // Leaf 11100
+	tree->revoke_node( tree, 0xEC000000); // Leaf 11101
+	tree->revoke_node( tree, 0xF4000000); // Leaf 11110
+	tree->revoke_node( tree, 0xFC000000); // Leaf 11111
+
+	tree->print_rvk( tree);
+	tree->free( tree);
+
+	return 1;
 }

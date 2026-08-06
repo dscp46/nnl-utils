@@ -219,7 +219,7 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 	if( !self )
 		return;
 
-	/** [!PSEUDO-CODE] **/
+	nnl_sd_t uv;
 	nnl_addr_t cur, i, left_child, right_child;
 	nnl_state_t cur_state, left_state, right_state;
 
@@ -269,7 +269,12 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 			{
 				if( right_state == NNL_ST_REVOKED )
 				{
-					printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"]\n", cur, right_child);
+					nnl_encode_uv( cur, right_child, &uv);
+					printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"] AKA T%2u\\T%2u. UV = %08"PRIx32", U_shift = 0x%02x\n", 
+						cur, right_child, 
+						nnl_tree_offset( cur)+1, nnl_tree_offset( right_child)+1,
+						uv.uv, uv.u_shift
+					);
 					//emit_diff( i, right_child); // S{i,R} = T_i \ T_R
 					// ??? aes_g3( G_DIR_RIGHT, node_key( i), sd->key ); utarray_push_back( sd_tree, sd);
 					break;
@@ -283,7 +288,12 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 			{
 				if( left_state == NNL_ST_REVOKED )
 				{
-					printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"]\n", cur, left_child);
+					nnl_encode_uv( cur, left_child, &uv);
+					printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"] AKA T%2u\\T%2u. UV = %08"PRIx32", U_shift = 0x%02x\n", 
+						cur, left_child, 
+						nnl_tree_offset( cur)+1, nnl_tree_offset( left_child)+1,
+						uv.uv, uv.u_shift
+					);
 					//emit_diff( i, left_child); // S{i,L} = T_i \ T_L
 					// ??? aes_g3( G_DIR_LEFT, node_key( i), sd->key ); utarray_push_back( sd_tree, sd);
 					break;

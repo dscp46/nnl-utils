@@ -6,6 +6,7 @@ struct settings {
 	char *p11_module_path;
 	char *token_label;
 	char *key_label;
+	int run_tests;
 };
 
 int parse_args( int argc, char *argv[], char *envp[], settings_t *cfg);

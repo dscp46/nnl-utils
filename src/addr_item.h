@@ -9,6 +9,6 @@ struct addr_item {
 	struct addr_item *next;
 };
 
-addr_item_t *addr_item_new( nnl_addr_t addr);
+addr_item_t *addr_item_new( nnl_addr_t addr, addr_item_t *next);
 
 #endif	/* ADDR_ITEM_H */

@@ -1,15 +1,25 @@
 BUILDDIR=./build
 SRCDIR=./src
-LIBS=-lcrypto -lssl
-CCFLAGS+=-Wall -g
+LDLIBS=-lcrypto -lssl
+CFLAGS+=-Wall
 INCLUDES+=$(shell pkg-config --cflags p11-kit-1)
 CC=gcc
-kdc_objects=$(addprefix $(BUILDDIR)/, kdc.o hsm.o addr_item.o nnl_crypto.o nnl_tree.o settings.o)
+TARGETS:=kdc
 
-all: kdc
+kdc_OBJS=$(addprefix $(BUILDDIR)/, kdc.o hsm.o addr_item.o nnl_crypto.o nnl_tree.o settings.o)
 
-kdc: $(kdc_objects)
-	$(CC) -o $@ $^ $(CCFLAGS) $(LIBS) 
+all: $(TARGETS)
+
+.PHONY: debug
+debug: CFLAGS+=-Wextra -g
+debug: clean all
+
+define PROGRAM_template
+$(1): $$($(1)_OBJS)
+	$(CC) $(CFLAGS) -o $$@ $$^ $(LDLIBS)
+endef
+
+$(foreach prog,$(TARGETS),$(eval $(call PROGRAM_template,$(prog))))
 
 .PHONY: dirs
 dirs:
@@ -21,5 +31,4 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.c | dirs
 .PHONY: clean
 clean:
 	find $(BUILDDIR) -name '*.o' -delete
-	rm -f kdc
-
+	rm -f $(TARGETS)

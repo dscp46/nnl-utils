@@ -230,6 +230,7 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 	// */
 	addr_item_t *stack = NULL, *cur_it;
 
+	// FIXME: if self->partition_depth is non zero, add every subroot
 	STACK_PUSH( stack, addr_item_new( nnl_root, stack));
 
 	while(!STACK_EMPTY( stack))
@@ -242,11 +243,38 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 			// Do not process leaves
 			continue;
 
+		if( self->partition_depth && nnl_depth( cur) == self->partition_depth )
+		{
+			// TODO: Add an offset entry into the SD Index (to skip unnecessary lookups)
+		}
+
 		cur_state = nnl_node_state( cur, self->scheme_depth, self->rvk_tree);
 
 		if( cur_state == NNL_ST_VALID )
 		{
-			// TODO: special case: root and valid => emit T{r} \ Ø if associated Dk is issued
+			if( nnl_depth( cur) == self->partition_depth )
+			{
+				// Special case: (sub)root is valid
+				// Emit T{root} \ Ø := T{root} \ T{l} U T{root} \ T{r}
+				left_child = nnl_left( cur);
+				right_child = nnl_right( cur);
+
+				nnl_encode_uv( cur, left_child, &uv);
+				printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"] AKA T%2u\\T%2u. UV = %08"PRIx32", U_shift = 0x%02x\n",
+					cur, left_child,
+					nnl_tree_offset( cur)+1, nnl_tree_offset( left_child)+1,
+					uv.uv, uv.u_shift
+				);
+
+				nnl_encode_uv( cur, right_child, &uv);
+				printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"] AKA T%2u\\T%2u. UV = %08"PRIx32", U_shift = 0x%02x\n",
+					cur, right_child,
+					nnl_tree_offset( cur)+1, nnl_tree_offset( right_child)+1,
+					uv.uv, uv.u_shift
+				);
+
+				continue;
+			}
 			continue;
 		}
 
@@ -310,6 +338,7 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 			// Mixed on one side, revoked on the other: act as if fully revoked, and cover the mixed branch.
 			else if( left_state == NNL_ST_MIXED && right_state == NNL_ST_REVOKED )
 			{
+				nnl_encode_uv( cur, i, &uv);
 				printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"] AKA T%2u\\T%2u. UV = %08"PRIx32", U_shift = 0x%02x\n", 
 					cur, i,
 					nnl_tree_offset( cur)+1, nnl_tree_offset( i)+1,
@@ -320,6 +349,7 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 			}
 			else if( left_state == NNL_ST_REVOKED && right_state == NNL_ST_MIXED )
 			{
+				nnl_encode_uv( cur, i, &uv);
 				printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"] AKA T%2u\\T%2u. UV = %08"PRIx32", U_shift = 0x%02x\n", 
 					cur, i,
 					nnl_tree_offset( cur)+1, nnl_tree_offset( i)+1,

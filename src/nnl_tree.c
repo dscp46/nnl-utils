@@ -238,6 +238,10 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 		cur = cur_it->value;
 		free( cur_it);
 
+		if( nnl_depth( cur) >= self->scheme_depth )
+			// Do not process leaves
+			continue;
+
 		cur_state = nnl_node_state( cur, self->scheme_depth, self->rvk_tree);
 
 		if( cur_state == NNL_ST_VALID )
@@ -248,8 +252,7 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 
 		if( cur_state == NNL_ST_REVOKED )
 		{
-			// TODO: if root and completely revoked: emit bogus C-value and emit UV with revoked flag
-			printf( "Emit T[%" PRIx32 "]\n", cur);
+			// Nothing to emit. A client will end up on the final UV with a revoked flag.
 			continue;
 		}
 
@@ -304,6 +307,28 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 				continue;
 			}
 
+			// Mixed on one side, revoked on the other: act as if fully revoked, and cover the mixed branch.
+			else if( left_state == NNL_ST_MIXED && right_state == NNL_ST_REVOKED )
+			{
+				printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"] AKA T%2u\\T%2u. UV = %08"PRIx32", U_shift = 0x%02x\n", 
+					cur, i,
+					nnl_tree_offset( cur)+1, nnl_tree_offset( i)+1,
+					uv.uv, uv.u_shift
+				);
+				STACK_PUSH( stack, addr_item_new( left_child, stack));
+				break;
+			}
+			else if( left_state == NNL_ST_REVOKED && right_state == NNL_ST_MIXED )
+			{
+				printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"] AKA T%2u\\T%2u. UV = %08"PRIx32", U_shift = 0x%02x\n", 
+					cur, i,
+					nnl_tree_offset( cur)+1, nnl_tree_offset( i)+1,
+					uv.uv, uv.u_shift
+				);
+				STACK_PUSH( stack, addr_item_new( right_child, stack));
+				break;
+			}
+
 			// Subset-difference not applicable
 			//printf( "SD not applicable, go 1 level down.\n");
 			STACK_PUSH( stack, addr_item_new( right_child, stack));
@@ -311,8 +336,9 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 			break;
 		}
 	}
+	printf( "Emit Tr[partition_root], u_shift |= 0xC0\n");
 	printf("done\n");
-	// TODO: final stack cleanup to free leftovers in the stack	
+	// TODO: final stack cleanup to free leftovers in the stack
 }
 
 nnl_tree_t* nnl_tree_init( uint8_t scheme_depth, uint8_t partition_depth)
@@ -443,6 +469,7 @@ int nnl_tree_runtests( void)
 	tree->revoke_node( tree, 0x4C000000); // Leaf 01001
 	tree->revoke_node( tree, 0x74000000); // Leaf 01110
 	tree->revoke_node( tree, 0x7C000000); // Leaf 01111
+	tree->revoke_node( tree, 0xDC000000); // Leaf 11011
 	tree->revoke_node( tree, 0xE4000000); // Leaf 11100
 	tree->revoke_node( tree, 0xEC000000); // Leaf 11101
 	tree->revoke_node( tree, 0xF4000000); // Leaf 11110

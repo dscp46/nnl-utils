@@ -214,12 +214,24 @@ static void nnl_tree_revoke_node( nnl_tree_t *self, nnl_addr_t addr)
 	++(self->rvk_tree[0]);
 }
 
+static void nnl_tree_emit_sd( nnl_addr_t u, nnl_addr_t v, nnl_tree_t *self)
+{
+	nnl_sd_t uv;
+	nnl_encode_uv( u, v, &uv);
+	printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"] AKA T%2u\\T%2u. UV = %08"PRIx32", U_shift = 0x%02x\n",
+		u, v,
+		nnl_tree_offset( u)+1, nnl_tree_offset( v)+1,
+		uv.uv, uv.u_shift
+	);
+	// TODO: check if associated Dk is compromised
+	//
+}
+
 static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 {
 	if( !self )
 		return;
 
-	nnl_sd_t uv;
 	nnl_addr_t cur, i, left_child, right_child;
 	nnl_state_t cur_state, left_state, right_state;
 
@@ -256,23 +268,8 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 			{
 				// Special case: (sub)root is valid
 				// Emit T{root} \ Ø := T{root} \ T{l} U T{root} \ T{r}
-				left_child = nnl_left( cur);
-				right_child = nnl_right( cur);
-
-				nnl_encode_uv( cur, left_child, &uv);
-				printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"] AKA T%2u\\T%2u. UV = %08"PRIx32", U_shift = 0x%02x\n",
-					cur, left_child,
-					nnl_tree_offset( cur)+1, nnl_tree_offset( left_child)+1,
-					uv.uv, uv.u_shift
-				);
-
-				nnl_encode_uv( cur, right_child, &uv);
-				printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"] AKA T%2u\\T%2u. UV = %08"PRIx32", U_shift = 0x%02x\n",
-					cur, right_child,
-					nnl_tree_offset( cur)+1, nnl_tree_offset( right_child)+1,
-					uv.uv, uv.u_shift
-				);
-
+				nnl_tree_emit_sd( cur, nnl_left( cur), self);
+				nnl_tree_emit_sd( cur, nnl_right( cur), self);
 				continue;
 			}
 			continue;
@@ -300,14 +297,7 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 			{
 				if( right_state == NNL_ST_REVOKED )
 				{
-					nnl_encode_uv( cur, right_child, &uv);
-					printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"] AKA T%2u\\T%2u. UV = %08"PRIx32", U_shift = 0x%02x\n", 
-						cur, right_child, 
-						nnl_tree_offset( cur)+1, nnl_tree_offset( right_child)+1,
-						uv.uv, uv.u_shift
-					);
-					//emit_diff( i, right_child); // S{i,R} = T_i \ T_R
-					// ??? aes_g3( G_DIR_RIGHT, node_key( i), sd->key ); utarray_push_back( sd_tree, sd);
+					nnl_tree_emit_sd( cur, right_child, self);
 					break;
 				}
 				// Right is mixed, go right
@@ -319,14 +309,7 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 			{
 				if( left_state == NNL_ST_REVOKED )
 				{
-					nnl_encode_uv( cur, left_child, &uv);
-					printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"] AKA T%2u\\T%2u. UV = %08"PRIx32", U_shift = 0x%02x\n", 
-						cur, left_child, 
-						nnl_tree_offset( cur)+1, nnl_tree_offset( left_child)+1,
-						uv.uv, uv.u_shift
-					);
-					//emit_diff( i, left_child); // S{i,L} = T_i \ T_L
-					// ??? aes_g3( G_DIR_LEFT, node_key( i), sd->key ); utarray_push_back( sd_tree, sd);
+					nnl_tree_emit_sd( cur, left_child, self);
 					break;
 				}
 				// Left is mixed, go right
@@ -338,23 +321,13 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 			// Mixed on one side, revoked on the other: act as if fully revoked, and cover the mixed branch.
 			else if( left_state == NNL_ST_MIXED && right_state == NNL_ST_REVOKED )
 			{
-				nnl_encode_uv( cur, i, &uv);
-				printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"] AKA T%2u\\T%2u. UV = %08"PRIx32", U_shift = 0x%02x\n", 
-					cur, i,
-					nnl_tree_offset( cur)+1, nnl_tree_offset( i)+1,
-					uv.uv, uv.u_shift
-				);
+				nnl_tree_emit_sd( cur, i, self);
 				STACK_PUSH( stack, addr_item_new( left_child, stack));
 				break;
 			}
 			else if( left_state == NNL_ST_REVOKED && right_state == NNL_ST_MIXED )
 			{
-				nnl_encode_uv( cur, i, &uv);
-				printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"] AKA T%2u\\T%2u. UV = %08"PRIx32", U_shift = 0x%02x\n", 
-					cur, i,
-					nnl_tree_offset( cur)+1, nnl_tree_offset( i)+1,
-					uv.uv, uv.u_shift
-				);
+				nnl_tree_emit_sd( cur, i, self);
 				STACK_PUSH( stack, addr_item_new( right_child, stack));
 				break;
 			}

@@ -56,12 +56,14 @@ int main( int argc, char *argv[], char *envp[])
 	if(!hsm)
 	{
 		fprintf( stderr, "malloc failed while allocating hsm_t.\n");
+		user_pin->free( user_pin);
 		return -1;
 	}
 
 	if(!get_user_pin( user_pin->ptr, user_pin->len))
 	{
 		fprintf( stderr, "Failed to get user pin.\n");
+		user_pin->free( user_pin);
 		free( hsm);
 		return 1;
 	}
@@ -69,7 +71,7 @@ int main( int argc, char *argv[], char *envp[])
 	if(!hsm_init( cfg.p11_module_path, user_pin->ptr, cfg.token_label, cfg.key_label, hsm))
 	{
 		fprintf( stderr, "Failed to bind HSM.\n");
-		explicit_bzero( user_pin, sizeof( user_pin));
+		user_pin->free( user_pin);
 		return 2;
 	}
 

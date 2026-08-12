@@ -40,6 +40,11 @@ static int memfd_secret_raw( unsigned int flags)
 
 void harden_process( void)
 {
+#ifdef DEBUG
+	fprintf( stderr: "WARNING: You are running a Debug binary, process hardening has been bypassed.\n");
+	return;
+#endif	/* DEBUG */
+	
 	// Force coredump size limit to zero, in case dumpable state is changed elsewhere later.
 	struct rlimit no_core = { 0, 0 };
 	if( setrlimit( RLIMIT_CORE, &no_core) == -1 )

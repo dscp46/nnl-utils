@@ -15,6 +15,7 @@
 
 #if defined(__linux__)
 #  include <sys/prctl.h>
+#  include <sys/utsname.h>
 #elif defined(__FreeBSD__)
 #  include <sys/procctl.h>
 #elif defined(__APPLE__)
@@ -37,6 +38,66 @@ static int memfd_secret_raw( unsigned int flags)
 {
 	return (int)syscall( SYS_memfd_secret, flags);
 }
+
+#if defined(__linux__)
+static int kernel_at_least(unsigned want_major, unsigned want_minor)
+{
+	struct utsname u;
+	unsigned maj = 0, min = 0;
+	if( uname( &u) == -1 )
+		return 0;
+
+	if( sscanf( u.release, "%u.%u", &maj, &min) != 2 )
+		return 0;
+
+	if( maj != want_major )
+		return maj > want_major;
+
+	return min >= want_minor;
+}
+
+static int cmdline_has_secretmem_enable(void)
+{
+	FILE *f = fopen( "/proc/cmdline", "r");
+	if(!f)
+		return 0;   /* can't read it; assume not present */
+
+	char line[4096];
+	char *got = fgets( line, sizeof line, f);
+	fclose( f);
+
+	if(!got)
+		return 0;
+
+	for( char *tok = strtok(line, " \t\n"); tok; tok = strtok(NULL, " \t\n") )
+		if (strcmp(tok, "secretmem.enable=1") == 0)
+			return 1;
+
+	return 0;
+}
+ 
+int check_secretmem_boot_config(void)
+{
+	/* Linux 6.5+ enables secretmem by default; nothing to check. */
+	if( kernel_at_least(6, 5) )
+		return 0;
+
+	if( cmdline_has_secretmem_enable() )
+		return 0;
+
+	fprintf(stderr,
+	    "secretmem may be disabled: this kernel is older than 6.5 and\n"
+	    "\"secretmem.enable=1\" was not found on the kernel command line.\n"
+	    "\n"
+	    "To enable it, add \"secretmem.enable=1\" to GRUB_CMDLINE_LINUX_DEFAULT\n"
+	    "in /etc/default/grub, then run: sudo update-grub && sudo reboot\n"
+	    "\n"
+	    "Verify after reboot with:\n"
+	    "  cat /sys/module/secretmem/parameters/enable   (should print Y)\n"
+	    "  grep -i secretmem /proc/meminfo                (line should exist)\n");
+	return 1;
+}
+#endif	/* defined(__linux__)*/
 
 void harden_process( void)
 {
@@ -133,7 +194,10 @@ secret_t* allocate_secret( size_t size)
 	if((fd = memfd_secret_raw(0)) == -1)
 	{
 		if (errno == ENOSYS)
+		{
 			fprintf(stderr, "memfd_secret() unavailable; refusing to run\n");
+			check_secretmem_boot_config();
+		}
 		else
 			fprintf(stderr, "memfd_secret() failed: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);

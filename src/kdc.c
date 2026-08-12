@@ -6,7 +6,10 @@
 
 #include "hsm.h"
 #include "nnl_tree.h"
+#include "procsec.h"
 #include "settings.h"
+
+#define USER_PIN_SZ	257
 
 int get_user_pin( char *user_pin, size_t user_pin_len)
 {
@@ -32,8 +35,11 @@ int get_user_pin( char *user_pin, size_t user_pin_len)
 
 int main( int argc, char *argv[], char *envp[])
 {
-	char user_pin[257];
+	secret_t *user_pin = NULL; 
 	settings_t cfg;
+
+	harden_process();
+	user_pin = allocate_secret( USER_PIN_SZ);
 
 	if(!parse_args( argc, argv, envp, &cfg))
 		return 1;
@@ -53,21 +59,21 @@ int main( int argc, char *argv[], char *envp[])
 		return -1;
 	}
 
-	if(!get_user_pin( user_pin, sizeof( user_pin)))
+	if(!get_user_pin( user_pin->ptr, user_pin->len))
 	{
 		fprintf( stderr, "Failed to get user pin.\n");
 		free( hsm);
 		return 1;
 	}
 
-	if(!hsm_init( cfg.p11_module_path, user_pin, cfg.token_label, cfg.key_label, hsm))
+	if(!hsm_init( cfg.p11_module_path, user_pin->ptr, cfg.token_label, cfg.key_label, hsm))
 	{
 		fprintf( stderr, "Failed to bind HSM.\n");
 		explicit_bzero( user_pin, sizeof( user_pin));
 		return 2;
 	}
 
-	explicit_bzero( user_pin, sizeof( user_pin));
+	user_pin->free( user_pin);
 
 	hsm_close( hsm);
 	free( hsm);

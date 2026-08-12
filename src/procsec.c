@@ -30,7 +30,7 @@
 #endif 	/* !SYS_memfd_secret */
 
 #ifndef DEBUG
-static int process_hardened = 0; /* Module-scoped */
+static _Thread_local int process_hardened = 0; /* Module-scoped */
 #endif	/* !DEBUG */
 
 static int memfd_secret_raw( unsigned int flags)
@@ -110,7 +110,7 @@ static void free_secret( secret_t *self)
 	free( self);
 }
 
-void* allocate_secret( size_t size)
+secret_t* allocate_secret( size_t size)
 {
 #ifndef DEBUG
 	if( !process_hardened ) /* Module-scoped */

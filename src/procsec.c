@@ -65,14 +65,6 @@ static void free_secret( secret_t *self)
 	if( !self || !self->ptr )
 		return;
 
-#ifndef DEBUG
-	if( !process_hardened ) /* Module-scoped */
-	{
-		fprintf( stderr, "Process not hardened, refusing to allocate secure memory.\n");
-		exit( EXIT_FAILURE);
-	}
-#endif	/* DEBUG */
-
 	explicit_bzero( self->ptr, self->len);
 
 	if( munlock( self->ptr, self->len) == -1 )
@@ -93,7 +85,15 @@ static void free_secret( secret_t *self)
 
 void* allocate_secret( size_t size)
 {
-	int fd;
+#ifndef DEBUG
+	if( !process_hardened ) /* Module-scoped */
+	{
+		fprintf( stderr, "Process not hardened, refusing to allocate secure memory.\n");
+		exit( EXIT_FAILURE);
+	}
+#endif	/* DEBUG */
+
+	int fd;	
 	secret_t *instance = (secret_t*) malloc( sizeof( secret_t));
 	if( !instance )
 		return NULL;

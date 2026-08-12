@@ -41,7 +41,7 @@ static int memfd_secret_raw( unsigned int flags)
 void harden_process( void)
 {
 #ifdef DEBUG
-	fprintf( stderr: "WARNING: You are running a Debug binary, process hardening has been bypassed.\n");
+	fprintf( stderr, "WARNING: You are running a Debug binary, process hardening has been bypassed.\n");
 	return;
 #endif	/* DEBUG */
 	

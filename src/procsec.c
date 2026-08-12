@@ -20,15 +20,15 @@
 #  else 
 #    error "Define SYS_memfd_secret for your architecture"
 #  endif /* __x86_64__ || __aarch64__ */
-#endif 	/* ndef SYS_memfd_secret*/
+#endif 	/* !SYS_memfd_secret */
 
 #ifndef DEBUG
-static int process_hardened = 0;
-#endif
+static int process_hardened = 0; /* Module-scoped */
+#endif	/* !DEBUG */
 
 static int memfd_secret_raw( unsigned int flags)
 {
-    return (int)syscall( SYS_memfd_secret, flags);
+	return (int)syscall( SYS_memfd_secret, flags);
 }
 
 void harden_process( void)
@@ -57,7 +57,7 @@ void harden_process( void)
 
 #ifndef DEBUG
 	process_hardened = 1; /* Module-scoped*/
-#endif	/* DEBUG */
+#endif	/* !DEBUG */
 }
 
 static void free_secret( secret_t *self)
@@ -91,7 +91,7 @@ void* allocate_secret( size_t size)
 		fprintf( stderr, "Process not hardened, refusing to allocate secure memory.\n");
 		exit( EXIT_FAILURE);
 	}
-#endif	/* DEBUG */
+#endif	/* !DEBUG */
 
 	int fd;	
 	secret_t *instance = (secret_t*) malloc( sizeof( secret_t));

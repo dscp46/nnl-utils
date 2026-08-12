@@ -8,11 +8,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
-#include <sys/prctl.h>
 #include <sys/random.h>
 #include <sys/resource.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+
+#if defined(__linux__)
+#  include <sys/prctl.h>
+#elif defined(__FreeBSD__)
+#  include <sys/procctl.h>
+#elif defined(__APPLE__)
+#  include <sys/ptrace.h>
+#endif
 
 #ifndef SYS_memfd_secret
 #  if defined(__x86_64__) || defined(__aarch64__)
@@ -33,13 +40,6 @@ static int memfd_secret_raw( unsigned int flags)
 
 void harden_process( void)
 {
-	// PR_SET_DUMPABLE 0 disables core dumps AND blocks same-UID ptrace attach.
-	if( prctl( PR_SET_DUMPABLE, 0L) == -1)
-	{
-		fprintf( stderr, "prctl(PR_SET_DUMPABLE)\n");
-		exit( EXIT_FAILURE);
-	}
-
 	// Force coredump size limit to zero, in case dumpable state is changed elsewhere later.
 	struct rlimit no_core = { 0, 0 };
 	if( setrlimit( RLIMIT_CORE, &no_core) == -1 )
@@ -48,12 +48,34 @@ void harden_process( void)
 		exit( EXIT_FAILURE);
 	}
 
+#if defined(__linux__)
+	// PR_SET_DUMPABLE 0 disables core dumps AND blocks same-UID ptrace attach.
+	if( prctl( PR_SET_DUMPABLE, 0L) == -1)
+	{
+		fprintf( stderr, "prctl(PR_SET_DUMPABLE)\n");
+		exit( EXIT_FAILURE);
+	}
 	// Prevent privilege gain via later setuid/setgid execs. Sensible default for a process that touches key material.
 	if( prctl( PR_SET_NO_NEW_PRIVS, 1L, 0L, 0L, 0L) == -1 )
 	{
 		fprintf( stderr, "prctl(PR_SET_NO_NEW_PRIVS)\n");
 		exit( EXIT_FAILURE);
 	}
+#elif defined(__FreeBSD__)
+	int deny = PROC_TRACE_CTL_DISABLE;
+	if (procctl(P_PID, getpid(), PROC_TRACE_CTL, &deny) == -1)
+	{
+		fprintf( stderr, "procctl( PROC_TRACE_CTL)\n");
+		exit( EXIT_FAILURE);
+	}
+	
+#elif defined(__APPLE__)
+	if (ptrace(PT_DENY_ATTACH, 0, 0, 0) == -1)
+	{
+		fprintf( stderr, "ptrace( PT_DENY_ATTACH)\n");
+		exit( EXIT_FAILURE);
+	}
+#endif
 
 #ifndef DEBUG
 	process_hardened = 1; /* Module-scoped*/

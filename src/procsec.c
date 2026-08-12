@@ -40,6 +40,30 @@ static int memfd_secret_raw( unsigned int flags)
 }
 
 #if defined(__linux__)
+#  ifdef FORTIFY_SOURCE
+static int lockdown_mode(char *buf, size_t len)
+{
+	FILE *f = fopen( "/sys/kernel/security/lockdown", "r");
+	if (!f)
+		return -1;
+
+	char line[256];
+	char *got = fgets( line, sizeof line, f);
+	fclose(f);
+	if (!got)
+		return -1;
+
+	char *lb = strchr( line, '[');
+	char *rb = lb ? strchr( lb, ']') : NULL;
+	if (!lb || !rb)
+		return -1;
+
+	*rb = '\0';
+	snprintf( buf, len, "%s", lb + 1);
+	return 0;
+}
+#  endif	/* FORTIFY_SOURCE */
+
 static int kernel_at_least(unsigned want_major, unsigned want_minor)
 {
 	struct utsname u;
@@ -115,28 +139,47 @@ void harden_process( void)
 	}
 
 #if defined(__linux__)
+#  ifdef FORTIFY_SOURCE
+	char mode[32];
+	if( lockdown_mode( mode, sizeof mode) == -1)
+	{
+		fprintf( stderr, "kernel lockdown: cannot determine state.\n"
+			"(not compiled in, or securityfs unmounted). REQUIRED: confidentiality.\n");
+		exit( EXIT_FAILURE);
+	}
+
+	if( strncmp( mode, "confidentiality", 15) != 0)
+	{
+		fprintf( stderr, "lockdown: active mode is \"%s\"; REQUIRED: confidentiality.\n"
+			"  Set via boot parameter lockdown=confidentiality", mode);
+		exit( EXIT_FAILURE);
+	}
+#  endif	/* FORTIFY_SOURCE */
+
 	// PR_SET_DUMPABLE 0 disables core dumps AND blocks same-UID ptrace attach.
 	if( prctl( PR_SET_DUMPABLE, 0L) == -1)
 	{
 		fprintf( stderr, "prctl(PR_SET_DUMPABLE)\n");
 		exit( EXIT_FAILURE);
 	}
+
 	// Prevent privilege gain via later setuid/setgid execs. Sensible default for a process that touches key material.
 	if( prctl( PR_SET_NO_NEW_PRIVS, 1L, 0L, 0L, 0L) == -1 )
 	{
 		fprintf( stderr, "prctl(PR_SET_NO_NEW_PRIVS)\n");
 		exit( EXIT_FAILURE);
 	}
+
 #elif defined(__FreeBSD__)
 	int deny = PROC_TRACE_CTL_DISABLE;
-	if (procctl(P_PID, getpid(), PROC_TRACE_CTL, &deny) == -1)
+	if( procctl(P_PID, getpid(), PROC_TRACE_CTL, &deny) == -1)
 	{
 		fprintf( stderr, "procctl( PROC_TRACE_CTL)\n");
 		exit( EXIT_FAILURE);
 	}
 	
 #elif defined(__APPLE__)
-	if (ptrace(PT_DENY_ATTACH, 0, 0, 0) == -1)
+	if( ptrace(PT_DENY_ATTACH, 0, 0, 0) == -1)
 	{
 		fprintf( stderr, "ptrace( PT_DENY_ATTACH)\n");
 		exit( EXIT_FAILURE);
@@ -223,13 +266,13 @@ secret_t* allocate_secret( size_t size)
 		fprintf( stderr, "mmap() failed\n");
 		exit( EXIT_FAILURE);
 	}	
-#endif	/* defined(__linux__) */
 	
 	if ( mlock( instance->ptr, instance->len) == -1)
 	{
 		fprintf( stderr, "mlock() failed\n");
 		exit( EXIT_FAILURE);
 	}
+#endif	/* defined(__linux__) */
 
 #ifdef MADV_NOCORE		/* FreeBSD: exclude this region from core dumps */
 	if ( madvise( instance->ptr, instance->len, MADV_NOCORE) == -1)

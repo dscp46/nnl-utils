@@ -102,6 +102,7 @@ void* allocate_secret( size_t size)
 	instance->len = size;
 	instance->free = free_secret;
 
+#if defined(__linux__)
 	if((fd = memfd_secret_raw(0)) == -1)
 	{
 		if (errno == ENOSYS)
@@ -118,20 +119,34 @@ void* allocate_secret( size_t size)
 		exit( EXIT_FAILURE);
 	}
 
-	if((instance->ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED )
+	if((instance->ptr = mmap(NULL, instance->size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED )
 	{
 		close( fd);
 		fprintf( stderr, "mmap() failed\n");
 		exit( EXIT_FAILURE);
 	}
-
 	close( fd);
-
-        if ( mlock( instance->ptr, instance->len) == -1)
+#else	/* defined(__linux__) */
+	if((instance->ptr = mmap(NULL, instance->size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)) == MAP_FAILED )
+	{
+		fprintf( stderr, "mmap() failed\n");
+		exit( EXIT_FAILURE);
+	}	
+#endif	/* defined(__linux__) */
+	
+	if ( mlock( instance->ptr, instance->len) == -1)
 	{
 		fprintf( stderr, "mlock() failed\n");
 		exit( EXIT_FAILURE);
 	}
+
+#ifdef MADV_NOCORE		/* FreeBSD: exclude this region from core dumps */
+	if ( madvise( instance->ptr, instance->size, MADV_NOCORE) == -1)
+	{
+		fprintf( stderr, "madvise( MADV_NOCORE) failed\n");
+		exit( EXIT_FAILURE);
+	}
+#endif	/* MADV_NOCORE */
 
 	return instance;
 }

@@ -139,14 +139,14 @@ void* allocate_secret( size_t size)
 		exit(EXIT_FAILURE);
 	}
 
-	if( ftruncate( fd, (off_t)size) == -1)
+	if( ftruncate( fd, (off_t)instance->len) == -1)
 	{
 		close( fd);
 		fprintf( stderr, "ftruncate() failed\n");
 		exit( EXIT_FAILURE);
 	}
 
-	if((instance->ptr = mmap(NULL, instance->size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED )
+	if((instance->ptr = mmap(NULL, instance->len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED )
 	{
 		close( fd);
 		fprintf( stderr, "mmap() failed\n");
@@ -154,7 +154,7 @@ void* allocate_secret( size_t size)
 	}
 	close( fd);
 #else	/* defined(__linux__) */
-	if((instance->ptr = mmap(NULL, instance->size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)) == MAP_FAILED )
+	if((instance->ptr = mmap(NULL, instance->len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)) == MAP_FAILED )
 	{
 		fprintf( stderr, "mmap() failed\n");
 		exit( EXIT_FAILURE);
@@ -168,7 +168,7 @@ void* allocate_secret( size_t size)
 	}
 
 #ifdef MADV_NOCORE		/* FreeBSD: exclude this region from core dumps */
-	if ( madvise( instance->ptr, instance->size, MADV_NOCORE) == -1)
+	if ( madvise( instance->ptr, instance->len, MADV_NOCORE) == -1)
 	{
 		fprintf( stderr, "madvise( MADV_NOCORE) failed\n");
 		exit( EXIT_FAILURE);

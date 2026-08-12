@@ -11,6 +11,6 @@ struct secret {
 };
 
 void  harden_process( void);
-void* allocate_secret( size_t size);
+secret_t* allocate_secret( size_t size);
 
 #endif	/* PROCSEC_H */

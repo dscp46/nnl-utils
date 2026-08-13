@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ckr_name.h"
 #include "nnl_crypto.h"
 
 typedef enum {
@@ -18,7 +19,7 @@ static const CK_BYTE ZERO_IV[AES_128_SZ] = { 0 };
 
 static void die( const char *what, CK_RV rv)
 {
-	fprintf( stderr, "%s failed: 0x%08lX\n", what, (unsigned long) rv);
+	fprintf( stderr, "%s failed: %s (0x%08lX)\n", what, ckr_name( rv), (unsigned long) rv);
 	exit( 1);
 }
 

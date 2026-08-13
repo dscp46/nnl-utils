@@ -6,7 +6,7 @@ INCLUDES+=$(shell pkg-config --cflags p11-kit-1)
 CC=gcc
 TARGETS:=kdc
 
-kdc_OBJS=$(addprefix $(BUILDDIR)/, kdc.o hsm.o addr_item.o nnl_crypto.o nnl_tree.o procsec.o settings.o)
+kdc_OBJS=$(addprefix $(BUILDDIR)/, kdc.o ckr_name.o hsm.o addr_item.o nnl_crypto.o nnl_tree.o procsec.o settings.o)
 
 all: $(TARGETS)
 

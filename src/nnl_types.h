@@ -1,12 +1,16 @@
 #ifndef NNL_TYPES_H
 #define NNL_TYPES_H
 
+#include <limits.h>
+#include <stddef.h>
 #include <stdint.h>
 
 // Node address (path to the leaf, followed by a terminal '1' bit).
 typedef uint32_t nnl_addr_t;
 
 #ifndef NNL_TREE_DEF
+// Number of bits in a nnl_addr_t
+extern const size_t NNL_ADDR_BITS;
 // Tree root address
 extern const nnl_addr_t nnl_root, nnl_invalid;
 #endif	/* NNL_TREE_DEF */
@@ -38,6 +42,5 @@ struct nnl_tree {
 	void (*print_rvk)( nnl_tree_t *self);
 	void (*revoke_node)( nnl_tree_t *self, nnl_addr_t addr);
 };
-
 
 #endif	/* NNL_TYPES_H */

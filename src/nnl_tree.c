@@ -16,6 +16,8 @@ const nnl_addr_t nnl_root    = 0x80000000;
 // Invalid address
 const nnl_addr_t nnl_invalid = 0x00000000;
 
+const size_t NNL_ADDR_BITS = CHAR_BIT * sizeof( nnl_addr_t);
+
 // Function definitions
 static void nnl_tree_free( nnl_tree_t *tree);
 static void nnl_tree_generate_sd_tree( nnl_tree_t *self);
@@ -88,6 +90,45 @@ inline nnl_addr_t nnl_right( nnl_addr_t u)
 
 	u |= (nnl_addr_t)3 << (shift-2) ; // Set child and mask bits
 	return u;
+}
+
+inline nnl_addr_t nnl_parent( nnl_addr_t u)
+{
+	if( u == nnl_invalid)
+		return nnl_invalid;
+
+	uint8_t shift;
+	nnl_addr_t mask;
+	nnl_build_mask( u, &mask, NULL, &shift);
+
+	u |= 1 << shift;
+	u &= mask;
+
+	return u;
+}
+
+inline nnl_addr_t nnl_opposite_branch( nnl_addr_t u)
+{
+	if( u == nnl_invalid)
+		return nnl_invalid;
+
+	uint8_t shift;
+	nnl_addr_t mask, bit_mask;
+	nnl_build_mask( u, &mask, NULL, &shift);
+
+	bit_mask = mask & ~(mask << 1); // Select last bit of the path
+	return u ^ bit_mask; // Flip the last path bit
+}
+
+int nnl_is_parent( nnl_addr_t u, nnl_addr_t v)
+{
+	nnl_addr_t u_mask, v_mask;
+	if( !u || !v )
+		return 0;
+
+	nnl_build_mask( u, &u_mask, NULL, NULL);
+	nnl_build_mask( v, &v_mask, NULL, NULL);
+	return ((u & u_mask) == (v & u_mask)) && (u_mask < v_mask);
 }
 
 int nnl_encode_uv( nnl_addr_t u, nnl_addr_t v, nnl_sd_t *sd)
@@ -344,6 +385,73 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 	// TODO: final stack cleanup to free leftovers in the stack
 }
 
+int nnl_emit_device_keys( hsm_t *hsm, nnl_tree_t *tree, nnl_addr_t addr, size_t key_len, nnl_dk_t **dk_list)
+{
+	if( !hsm || !tree || !addr )
+		return 0;
+
+	addr_item_t *subset = NULL, *diff = NULL, *cur_subset, *cur_diff;
+
+	nnl_addr_t u, u_mask, v, v_mask;
+	nnl_sd_t uv;
+
+	//u_mask = (nnl_addr_t)-1 << (NNL_ADDR_BITS - tree->partition_depth);
+	u_mask = (nnl_addr_t)-1 << 32; // (NNL_ADDR_BITS - tree->partition_depth);
+	u = addr & u_mask;
+	u |= ~u_mask & (u_mask >> 1);
+	if( !u )
+		u = 1 << (NNL_ADDR_BITS-1);
+
+	v_mask = u_mask;
+	v = addr;
+
+	do
+	{
+		STACK_PUSH( diff, addr_item_new( nnl_opposite_branch(v), diff));
+		v = nnl_parent( v);
+		STACK_PUSH( subset, addr_item_new( v, subset));
+	}
+	while( v != u );
+
+	while(!STACK_EMPTY( subset))
+	{
+		STACK_POP( subset, cur_subset);
+		u = cur_subset->value;
+		free( cur_subset);
+
+		cur_diff = diff;
+
+		// skip all difference that are above our subset
+		while( !nnl_is_parent( u, cur_diff->value) )
+		{
+			cur_diff = cur_diff->next;
+			if( cur_diff == NULL )
+				goto sd_walk_continue; /* Break from current loop and continue to next subset */
+		}
+
+		while( cur_diff != NULL )
+		{
+			printf( "Emit T[%08" PRIx32 "] \\ T[%08" PRIx32 "] AKA T%2u\\T%2u\n", 
+				u, cur_diff->value, 
+				nnl_tree_offset( u)+1, nnl_tree_offset( cur_diff->value)+1
+			);
+			cur_diff = cur_diff->next;
+		}
+
+	sd_walk_continue:
+		;
+	}
+
+	// Empty the difference stack
+	while(!STACK_EMPTY( diff))
+	{
+		STACK_POP( diff, cur_diff);
+		free( cur_diff);
+	}
+
+	return 1;
+}
+
 nnl_tree_t* nnl_tree_init( uint8_t scheme_depth, uint8_t partition_depth)
 {
 	if( scheme_depth < 2 || scheme_depth >= 31 || (partition_depth >= (scheme_depth-2)) )
@@ -429,6 +537,18 @@ int nnl_tree_runtests( void)
 	if( v != v_prime )
 	{
 		fprintf( stderr, "V (0x%" PRIx32") != V' (0x%"PRIx32")\n", v, v_prime);
+		return 0;
+	}
+
+	if((u = nnl_parent( nnl_parent( 0xD4000000))) != 0xD0000000 )
+	{
+		fprintf( stderr, "nnl_parent failed to determine the grandparent of 0xD4000000 (got %08" PRIx32 ", expected %08" PRIx32").\n", u, 0xD0000000);
+		return 0;
+	}
+
+	if((u = nnl_opposite_branch( 0xDC000000)) != 0xD4000000 )
+	{
+		fprintf( stderr, "nnl_opposite_branch failed: got %08" PRIx32 ", expected %08" PRIx32").\n", u, 0xD4000000);
 		return 0;
 	}
 

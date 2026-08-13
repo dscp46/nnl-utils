@@ -81,6 +81,19 @@ int main( int argc, char *argv[], char *envp[])
 
 	user_pin->free( user_pin);
 
+	nnl_dk_t *dk = NULL;
+	nnl_tree_t *tree = nnl_tree_init( 5, 0);
+
+	printf( "Emitting DKs for user 0x04000000\n");
+	if (!nnl_emit_device_keys( hsm, tree, 0x04000000, AES_128_SZ, &dk))
+		fprintf( stderr, "DK emission failed.\n" );
+
+	printf( "Emitting DKs for user 0x9C000000\n");
+	if (!nnl_emit_device_keys( hsm, tree, 0x9C000000, AES_128_SZ, &dk))
+		fprintf( stderr, "DK emission failed.\n" );
+
+	tree->free( tree);
+
 	hsm_close( hsm);
 	free( hsm);
 	return 0;

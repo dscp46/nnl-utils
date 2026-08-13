@@ -151,7 +151,7 @@ void harden_process( void)
 	if( strncmp( mode, "confidentiality", 15) != 0)
 	{
 		fprintf( stderr, "lockdown: active mode is \"%s\"; REQUIRED: confidentiality.\n"
-			"  Set via boot parameter lockdown=confidentiality", mode);
+			"  Set via boot parameter lockdown=confidentiality\n", mode);
 		exit( EXIT_FAILURE);
 	}
 #  endif	/* FORTIFY_SOURCE */

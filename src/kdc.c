@@ -15,6 +15,7 @@ int get_user_pin( char *user_pin, size_t user_pin_len)
 {
 	struct termios oldt, newt;
 	int success = 0;
+	size_t eopin;
 	tcgetattr( STDIN_FILENO, &oldt);
 
 	newt = oldt;
@@ -24,7 +25,10 @@ int get_user_pin( char *user_pin, size_t user_pin_len)
 	printf( "Enter user PIN: ");
 	fflush( stdout);
 
-	if ( fgets( user_pin, user_pin_len, stdin) != NULL) {
+	if ( fgets( user_pin, user_pin_len, stdin) != NULL)
+	{
+		eopin = strcspn( user_pin, "\r\n");
+		user_pin[eopin] = '\0';
 		success = 1;
 	}
 

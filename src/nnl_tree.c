@@ -407,7 +407,7 @@ int nnl_emit_device_keys( hsm_t *hsm, nnl_tree_t *tree, nnl_addr_t addr, size_t 
 
 	// Special case where the partition head is the root node.
 	if( !u )
-		u = 1 << (NNL_ADDR_BITS-1);
+		u = nnl_root;
 
 	v_mask = u_mask;
 	v = addr;

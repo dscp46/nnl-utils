@@ -11,10 +11,10 @@
 #include "addr_item.h"
 
 // Tree root address
-const nnl_addr_t nnl_root    = 0x80000000;
+const nnl_addr_t nnl_root    = (nnl_addr_t)1 << (sizeof(nnl_addr_t)-1);
 
 // Invalid address
-const nnl_addr_t nnl_invalid = 0x00000000;
+const nnl_addr_t nnl_invalid = (nnl_addr_t)0;
 
 const size_t NNL_ADDR_BITS = CHAR_BIT * sizeof( nnl_addr_t);
 

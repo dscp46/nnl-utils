@@ -10,13 +10,15 @@
 
 #include "addr_item.h"
 
+const size_t NNL_ADDR_BITS = CHAR_BIT * sizeof( nnl_addr_t);
+
 // Tree root address
-const nnl_addr_t nnl_root    = (nnl_addr_t)1 << (sizeof(nnl_addr_t)-1);
+const nnl_addr_t nnl_root    = (nnl_addr_t)1 << (NNL_ADDR_BITS-1);
 
 // Invalid address
 const nnl_addr_t nnl_invalid = (nnl_addr_t)0;
 
-const size_t NNL_ADDR_BITS = CHAR_BIT * sizeof( nnl_addr_t);
+
 
 // Function definitions
 static void nnl_tree_free( nnl_tree_t *tree);

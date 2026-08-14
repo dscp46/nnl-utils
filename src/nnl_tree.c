@@ -395,16 +395,24 @@ int nnl_emit_device_keys( hsm_t *hsm, nnl_tree_t *tree, nnl_addr_t addr, size_t 
 	nnl_addr_t u, u_mask, v, v_mask;
 	nnl_sd_t uv;
 
-	//u_mask = (nnl_addr_t)-1 << (NNL_ADDR_BITS - tree->partition_depth);
-	u_mask = (nnl_addr_t)-1 << 32; // (NNL_ADDR_BITS - tree->partition_depth);
+	u_mask = (nnl_addr_t)-1;
+	// Done this way because -1 << NNL_ADDR_BITS - tree->partition_depth is UB for a partition-free tree
+	for( size_t i=0; i<(NNL_ADDR_BITS - (size_t)tree->partition_depth); ++i)
+		u_mask <<= 1;
+
 	u = addr & u_mask;
 	u |= ~u_mask & (u_mask >> 1);
+
+	// Special case where the partition head is the root node.
 	if( !u )
 		u = 1 << (NNL_ADDR_BITS-1);
 
 	v_mask = u_mask;
 	v = addr;
 
+	// Subsets are the nodes in the device path
+	// Differences are branches opposite to the device path
+	// Walk from the leaf to root, such that we attribute device keys
 	do
 	{
 		STACK_PUSH( diff, addr_item_new( nnl_opposite_branch(v), diff));
@@ -421,7 +429,7 @@ int nnl_emit_device_keys( hsm_t *hsm, nnl_tree_t *tree, nnl_addr_t addr, size_t 
 
 		cur_diff = diff;
 
-		// skip all difference that are above our subset
+		// skip all differences that are above our subset
 		while( !nnl_is_parent( u, cur_diff->value) )
 		{
 			cur_diff = cur_diff->next;

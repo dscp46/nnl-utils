@@ -394,8 +394,7 @@ int nnl_emit_device_keys( hsm_t *hsm, nnl_tree_t *tree, nnl_addr_t addr, size_t 
 
 	addr_item_t *subset = NULL, *diff = NULL, *cur_subset, *cur_diff;
 
-	nnl_addr_t u, u_mask, v, v_mask;
-	nnl_sd_t uv;
+	nnl_addr_t u, u_mask, v;
 
 	u_mask = (nnl_addr_t)-1;
 	// Done this way because -1 << NNL_ADDR_BITS - tree->partition_depth is UB for a partition-free tree
@@ -409,7 +408,6 @@ int nnl_emit_device_keys( hsm_t *hsm, nnl_tree_t *tree, nnl_addr_t addr, size_t 
 	if( !u )
 		u = nnl_root;
 
-	v_mask = u_mask;
 	v = addr;
 
 	// Subsets are the nodes in the device path

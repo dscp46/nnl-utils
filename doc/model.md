@@ -35,7 +35,11 @@ Let $`\sigma(n)`$ the partition index of a node $`n`$ of depth $`d_n`$
 Let $`path(n)`$  the path from the root to node $`n`$.
 ```math
 \pi(n) = b_1 \dots b_p
+```
+```math
 \sigma(n) = b_{p+1} \dots b_{d_n}
+```
+```math
 path(n) \in \{0,1\}^k, \quad path(n) = \pi(n) \Vert \sigma(n) \Vert 1 \Vert \underbrace{0 \dots 0}_{k - d_n - 1} = b_1 \dots b_{d_n} 1 \underbrace{0 \dots 0}_{k - d_n - 1}, \quad \forall n \vert d_T(n,r) < k-1 
 ```
 

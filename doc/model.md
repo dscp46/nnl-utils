@@ -32,7 +32,7 @@ Let $`\pi(n)`$  the partition prefix of a node $`n`$ of depth $`d_n`$
 
 Let $`\sigma(n)`$ the partition index of a node $`n`$ of depth $`d_n`$ 
 
-Let $`path(n)`$  the path from the root to node $`n`$.
+Let $`\gamma(n)`$  the path from the root to node $`n`$.
 ```math
 \pi(n) = b_1 \dots b_p
 ```
@@ -40,6 +40,11 @@ Let $`path(n)`$  the path from the root to node $`n`$.
 \sigma(n) = b_{p+1} \dots b_{d_n}
 ```
 ```math
-path(n) \in \{0,1\}^k, \quad path(n) = \pi(n) \Vert \sigma(n) \Vert 1 \Vert \underbrace{0 \dots 0}_{k - d_n - 1} = b_1 \dots b_{d_n} 1 \underbrace{0 \dots 0}_{k - d_n - 1}, \quad \forall n \vert d_T(n,r) < k-1 
+\gamma(n) \in \{0,1\}^k, \quad \gamma(n) = \pi(n) \Vert \sigma(n) \Vert 1 \Vert \underbrace{0 \dots 0}_{k - d_n - 1} = b_1 \dots b_{d_n} 1 \underbrace{0 \dots 0}_{k - d_n - 1}, \quad \forall n \vert d_T(n,r) < k-1 
 ```
+## Position of a node's state in a tree state table
 
+Let $`\xi(n)`$ the position of a node's state within a tree state table.
+```math
+$$ \xi(n) = \underbrace{\left(2^{d-p+1} - 1\right)}_{\text{size of a subtree}} \cdot \underbrace{\lfloor \frac{\gamma(n)}{2^{k-d_T(n,r_p)}} \rfloor }_{\pi(n)} + \underbrace{\left(2^{d_T(n,r_p)}-1\right)}_{\text{levels above us in }T_p} + \underbrace{\left(\lfloor\frac{\gamma}{2^{k-d_T(n,r)}}\rfloor \mod \left(2^{d_T(n,r)-d_T(n,r_p)}\right)\right)}_{\sigma(n)}, \quad \xi(n) \in \left[ 0 , \sum_{Tp \in F_p(T)} \vert V(T_p) \vert \right[ $$
+```

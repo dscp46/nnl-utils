@@ -46,5 +46,5 @@ Let $`\gamma(n)`$  the path from the root to node $`n`$.
 
 Let $`\xi(n)`$ the position of a node's state within a tree state table.
 ```math
-$$ \xi(n) = \underbrace{\left(2^{d-p+1} - 1\right)}_{\text{size of a subtree}} \cdot \underbrace{\lfloor \frac{\gamma(n)}{2^{k-d_T(n,r_p)}} \rfloor }_{\pi(n)} + \underbrace{\left(2^{d_T(n,r_p)}-1\right)}_{\text{levels above us in }T_p} + \underbrace{\left(\lfloor\frac{\gamma}{2^{k-d_T(n,r)}}\rfloor \mod \left(2^{d_T(n,r)-d_T(n,r_p)}\right)\right)}_{\sigma(n)}, \quad \xi(n) \in \left[ 0 , \sum_{Tp \in F_p(T)} \vert V(T_p) \vert \right[ $$
+$$ \xi(n) = \underbrace{\left(2^{d-p+1} - 1\right)}_{\text{size of a subtree}} \cdot \underbrace{\lfloor \frac{\gamma(n)}{2^{k-d_T(n,r_p)}} \rfloor }_{\pi(n)} + \underbrace{\left(2^{d_T(n,r_p)}-1\right)}_{\text{levels above us in }T_p} + \underbrace{\left(\lfloor\frac{\gamma(n)}{2^{k-d_T(n,r)}}\rfloor \mod \left(2^{d_T(n,r)-d_T(n,r_p)}\right)\right)}_{\sigma(n)}, \quad \xi(n) \in \left[ 0 , \sum_{Tp \in F_p(T)} \vert V(T_p) \vert \right[ $$
 ```

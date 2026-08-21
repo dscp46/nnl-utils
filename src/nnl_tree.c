@@ -193,11 +193,15 @@ static void nnl_tree_revoke_node( nnl_tree_t *self, nnl_addr_t addr)
 		mask <<=1;
 		addr &= mask;
 		addr |= (nnl_addr_t)1 << shift++;
+		--depth;
 	}
-	while( mask );
+	while( depth > self->partition_depth );
 	
-	// Increment root
-	++(self->rvk_tree[0]);
+	for( size_t i=0; i<(NNL_ADDR_BITS-self->partition_depth); ++i)
+		addr >>=1;
+
+	// Increment subtree root
+	++(self->rvk_tree[ addr * nnl_tree_size( self->scheme_depth-self->partition_depth, 0) ]);
 }
 
 static void nnl_tree_emit_sd( nnl_addr_t u, nnl_addr_t v, nnl_tree_t *self)
@@ -447,6 +451,10 @@ int nnl_tree_runtests( void)
 	tree = nnl_tree_init( 5, 2);
 	printf( "Tree size (5, 2): %zu\n", nnl_tree_size( 5, 2));
 	printf( "Offset( 0110/4): %zu\n", nnl_tree_offset( 0x68000000, tree));
+	tree->revoke_node( tree, 0x6C000000); // Leaf 01101
+	tree->revoke_node( tree, 0xD4000000); // Leaf 11010
+	printf( "Revoked nodes 01101/5 and 11010/5\n");
+	tree->print_rvk( tree);
 	tree->free( tree);
 
 	nnl_addr_t u = 0xB0000000;

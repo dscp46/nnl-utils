@@ -1,7 +1,7 @@
-#define NNL_TREE_DEF
 #include "nnl_tree.h"
 
 #include <inttypes.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,127 +10,42 @@
 
 #include "addr_item.h"
 
-const size_t NNL_ADDR_BITS = CHAR_BIT * sizeof( nnl_addr_t);
-
-// Tree root address
-const nnl_addr_t nnl_root    = (nnl_addr_t)1 << (NNL_ADDR_BITS-1);
-
-// Invalid address
-const nnl_addr_t nnl_invalid = (nnl_addr_t)0;
-
-
+#define FMT_STR_SZ	16
 
 // Function definitions
 static void nnl_tree_free( nnl_tree_t *tree);
 static void nnl_tree_generate_sd_tree( nnl_tree_t *self);
 static void nnl_tree_revoke_node( nnl_tree_t *self, nnl_addr_t addr);
 
-inline static void nnl_build_mask( nnl_addr_t addr, uint32_t *mask, uint8_t *depth, uint8_t *shift)
+size_t nnl_tree_offset( nnl_addr_t node_addr, const nnl_tree_t *tree)
 {
-	if( !addr || !mask )
-		return;
-
-	*mask = (nnl_addr_t) -1;
-
-	if( depth )
-		*depth = 32; // FIXME: base on nnl_addr_t bit size?
-
-	if( shift )
-		*shift = 0;
-
-	// assert( addr != nnl_invalid );
-	while(!(addr & ~*mask))
-	{
-		*mask <<= 1;
-
-		if( depth )
-			--(*depth);
-
-		if( shift )
-			++(*shift);
-	}
-}
-
-uint32_t nnl_tree_size( uint8_t scheme_depth)
-{
-	// assert( scheme_depth <= 8*sizeof(nnl_addr_t)-1 );
-	return ( (uint32_t)1 << (scheme_depth+1) ) - 1;
-}
-
-uint32_t nnl_tree_offset( nnl_addr_t node_addr)
-{
-	uint32_t mask;
+	nnl_addr_t mask, partition_mask;
 	uint8_t node_depth;
 	nnl_build_mask( node_addr, &mask, &node_depth, NULL);
 
-	// assert( node_depth <= scheme_depth );
-	return nnl_tree_size( node_depth-1) + ( (node_addr & mask) >> (32-node_depth) );
-}
+	// assert( node_depth <= scheme_depth && node_depth >= partition_depth );
+	nnl_addr_t partition_num = node_addr & mask;
+	for( size_t i=0; i<(NNL_ADDR_BITS-tree->partition_depth); ++i)
+		partition_num >>= 1;
 
-inline nnl_addr_t nnl_left( nnl_addr_t u)
-{
-	if( u == nnl_invalid)
-		return nnl_invalid;
+	partition_mask = mask;
+	for( size_t i=0; i<(size_t)(node_depth-tree->partition_depth); ++i)
+		partition_mask <<=1;
 
-	uint8_t shift;
-	nnl_addr_t mask;
-	nnl_build_mask( u, &mask, NULL, &shift);
+	nnl_addr_t partition_index = (node_addr & mask & ~partition_mask);
+	for( size_t i=0; i<(NNL_ADDR_BITS-node_depth); ++i)
+	{
+		mask >>= 1;
+		partition_index >>= 1;
+		partition_mask >>=1;
+	}
+	size_t subtree_sz = (size_t)1 << (tree->scheme_depth - tree->partition_depth + 1);
+	subtree_sz--;
 
-	u &= ~( (nnl_addr_t)1 << (shift-1) ); // Clear child addr
-	u |= (nnl_addr_t)1 << (shift-2) ; // Set mask bit
-	return u;
-}
-
-inline nnl_addr_t nnl_right( nnl_addr_t u)
-{
-	if( u == nnl_invalid)
-		return nnl_invalid;
-
-	uint8_t shift;
-	nnl_addr_t mask;
-	nnl_build_mask( u, &mask, NULL, &shift);
-
-	u |= (nnl_addr_t)3 << (shift-2) ; // Set child and mask bits
-	return u;
-}
-
-inline nnl_addr_t nnl_parent( nnl_addr_t u)
-{
-	if( u == nnl_invalid)
-		return nnl_invalid;
-
-	uint8_t shift;
-	nnl_addr_t mask;
-	nnl_build_mask( u, &mask, NULL, &shift);
-
-	u |= 1 << shift;
-	u &= mask;
-
-	return u;
-}
-
-inline nnl_addr_t nnl_opposite_branch( nnl_addr_t u)
-{
-	if( u == nnl_invalid)
-		return nnl_invalid;
-
-	uint8_t shift;
-	nnl_addr_t mask, bit_mask;
-	nnl_build_mask( u, &mask, NULL, &shift);
-
-	bit_mask = mask & ~(mask << 1); // Select last bit of the path
-	return u ^ bit_mask; // Flip the last path bit
-}
-
-int nnl_is_parent( nnl_addr_t u, nnl_addr_t v)
-{
-	nnl_addr_t u_mask, v_mask;
-	if( !u || !v )
-		return 0;
-
-	nnl_build_mask( u, &u_mask, NULL, NULL);
-	nnl_build_mask( v, &v_mask, NULL, NULL);
-	return ((u & u_mask) == (v & u_mask)) && (u_mask < v_mask);
+	size_t nodes_above_us = (nnl_addr_t)1 << (node_depth - tree->partition_depth);
+	nodes_above_us--;
+	
+	return (subtree_sz * (size_t)partition_num) + nodes_above_us + (size_t)partition_index;
 }
 
 int nnl_encode_uv( nnl_addr_t u, nnl_addr_t v, nnl_sd_t *sd)
@@ -171,34 +86,18 @@ int nnl_decode_uv( const nnl_sd_t *sd, nnl_addr_t *u, nnl_addr_t *v)
 	return 1;
 }
 
-uint8_t nnl_depth( nnl_addr_t u)
+nnl_state_t nnl_node_state( nnl_addr_t u, const nnl_tree_t *self)
 {
-	// assert( u != nnl_invalid );
-	uint8_t depth;
-	uint32_t mask;
-	nnl_build_mask( u, &mask, &depth, NULL);
-
-	return depth;
-}
-
-uint32_t nnl_nb_leaves( nnl_addr_t u, uint8_t scheme_depth)
-{
-	// assert( scheme_depth < 8*sizeof(nnl_addr_t) );
-	return (uint32_t)1 << ( scheme_depth - nnl_depth(u) );
-}
-
-nnl_state_t nnl_node_state( nnl_addr_t u, uint8_t scheme_depth, const uint32_t *rvk_tree)
-{
-	uint32_t offset = nnl_tree_offset( u);
-	if( !rvk_tree )
+	size_t offset = nnl_tree_offset( u, self);
+	if( !self )
 		return NNL_ST_REVOKED; // FIXME
 	// assert( rvk_tree && (offset < (sizeof( rvk_tree ) / sizeof(uint32_t)))) ?
 
 	//printf( "state(%08" PRIx32 "): %s\n", u, (rvk_tree[offset] == 0)? "VALID" : (( rvk_tree[offset] == nnl_nb_leaves( u, scheme_depth) ) ? "REVOKED":"MIXED"));
-	if( rvk_tree[offset] == 0 )
+	if( self->rvk_tree[offset] == 0 )
 		return NNL_ST_VALID;
 
-	if( rvk_tree[offset] == nnl_nb_leaves( u, scheme_depth) )
+	if( self->rvk_tree[offset] == nnl_nb_leaves( u, self->scheme_depth) )
 		return NNL_ST_REVOKED;
 
 	return NNL_ST_MIXED;
@@ -212,25 +111,69 @@ static void nnl_tree_print_rvk( nnl_tree_t *self)
 		return;
 	}
 
-	uint8_t cur_depth = self->partition_depth;
-	uint32_t nb_nodes = nnl_tree_size( self->scheme_depth-self->partition_depth);
-	uint32_t nodes_in_layer = 1;
-	printf( "%u: ", self->partition_depth);
-	for( uint32_t i=0, j=0; i<nb_nodes; ++i)
-	{
-		++j;
-		printf( "%" PRIu32 " ", self->rvk_tree[i]);
+	size_t d = self->scheme_depth;
+	size_t p = self->partition_depth;
 
-		if( j == nodes_in_layer )
+	size_t nb_lines = d-p+1;
+	size_t nb_items_last = 1 << (d-p);
+	size_t item_sz = (size_t) ceil( log(nb_items_last) / log(10) );
+	size_t line_sz = ( 1 << p ) * nb_items_last * item_sz * 2;
+	char format_str[ FMT_STR_SZ];
+
+	char   **lines;
+	lines = calloc( sizeof( char*), nb_lines);
+
+	for( size_t i=0; i<nb_lines; ++i )
+	{
+		lines[i] = malloc( line_sz+1);
+		memset( lines[i], ' ', line_sz);
+		lines[i][line_sz] = '\0';
+
+		if( !(lines[i]) )
 		{
-			++cur_depth;
-			if( cur_depth <= self->scheme_depth )
-				printf("\n%u: ", cur_depth);
-			j=0;
-			nodes_in_layer <<= 1;
+			fprintf( stderr, "Unable to allocate line %zu.\n", i);
+			while( i > 0 )
+				free( lines[--i]);
+
+			free( lines);
+			return;
 		}
 	}
-	printf( "\n");
+
+	size_t idx=0;
+	size_t part=0;
+	size_t part_offset=0;
+	snprintf( format_str,     FMT_STR_SZ, "%%0%zuzu", item_sz);
+
+	do
+	{
+		for( size_t j=p; j<=d; ++j)
+		{
+			size_t nb_items_on_line = 1 << (j-p);
+			size_t spaces = ( 1 << (d-j+1) )-1;
+			size_t heading_sz = ( 1 << (d-j) )-1;
+			size_t item_offset = part_offset;
+
+			if( (d-j) > 0 )
+				item_offset += (item_sz*heading_sz);
+
+			for( size_t i=0; i<nb_items_on_line; ++i )
+			{
+				snprintf( lines[j-p] + item_offset, line_sz+1, format_str, self->rvk_tree[idx++]);
+				*(lines[j-p] + item_sz + item_offset) = ' ';
+				item_offset += item_sz*(spaces+1);
+			}
+		}
+		part_offset += nb_items_last * item_sz * 2;
+	} while( ++part < (size_t)(1 << p) );
+
+	for( size_t i=0; i<nb_lines; ++i )
+	{
+		printf( "%02zu: %s\n", i+p, lines[i]);
+		free( lines[i]);
+	}
+
+	free( lines);
 }
 
 static void nnl_tree_revoke_node( nnl_tree_t *self, nnl_addr_t addr)
@@ -246,7 +189,7 @@ static void nnl_tree_revoke_node( nnl_tree_t *self, nnl_addr_t addr)
 
 	do
 	{
-		++(self->rvk_tree[ nnl_tree_offset( addr) ]);
+		++(self->rvk_tree[ nnl_tree_offset( addr, self) ]);
 		mask <<=1;
 		addr &= mask;
 		addr |= (nnl_addr_t)1 << shift++;
@@ -261,9 +204,9 @@ static void nnl_tree_emit_sd( nnl_addr_t u, nnl_addr_t v, nnl_tree_t *self)
 {
 	nnl_sd_t uv;
 	nnl_encode_uv( u, v, &uv);
-	printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"] AKA T%2u\\T%2u. UV = %08"PRIx32", U_shift = 0x%02x\n",
+	printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"] AKA T%2zu\\T%2zu. UV = %08"PRIx32", U_shift = 0x%02x\n",
 		u, v,
-		nnl_tree_offset( u)+1, nnl_tree_offset( v)+1,
+		nnl_tree_offset( u, self)+1, nnl_tree_offset( v, self)+1,
 		uv.uv, uv.u_shift
 	);
 	// TODO: check if associated Dk is compromised
@@ -303,7 +246,7 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 			// TODO: Add an offset entry into the SD Index (to skip unnecessary lookups)
 		}
 
-		cur_state = nnl_node_state( cur, self->scheme_depth, self->rvk_tree);
+		cur_state = nnl_node_state( cur, self);
 
 		if( cur_state == NNL_ST_VALID )
 		{
@@ -328,10 +271,10 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 		while(1)
 		{
 			left_child = nnl_left( i);
-			left_state = nnl_node_state( left_child, self->scheme_depth, self->rvk_tree);
+			left_state = nnl_node_state( left_child, self);
 
 			right_child = nnl_right( i);
-			right_state = nnl_node_state( right_child, self->scheme_depth, self->rvk_tree);
+			right_state = nnl_node_state( right_child, self);
 
 			if( left_state == NNL_ST_REVOKED && right_state == NNL_ST_REVOKED)
 				break; // Safeguard, theorically unreachable
@@ -439,9 +382,9 @@ int nnl_emit_device_keys( hsm_t *hsm, nnl_tree_t *tree, nnl_addr_t addr, size_t 
 
 		while( cur_diff != NULL )
 		{
-			printf( "Emit T[%08" PRIx32 "] \\ T[%08" PRIx32 "] AKA T%2u\\T%2u\n", 
+			printf( "Emit T[%08" PRIx32 "] \\ T[%08" PRIx32 "] AKA T%2zu\\T%2zu\n", 
 				u, cur_diff->value, 
-				nnl_tree_offset( u)+1, nnl_tree_offset( cur_diff->value)+1
+				nnl_tree_offset( u, tree)+1, nnl_tree_offset( cur_diff->value, tree)+1
 			);
 			cur_diff = cur_diff->next;
 		}
@@ -473,7 +416,7 @@ nnl_tree_t* nnl_tree_init( uint8_t scheme_depth, uint8_t partition_depth)
 
 	instance->partition_depth = partition_depth;
 	instance->scheme_depth = scheme_depth;
-	instance->rvk_tree = calloc( sizeof( uint32_t), nnl_tree_size( scheme_depth-partition_depth));
+	instance->rvk_tree = calloc( sizeof( size_t), nnl_tree_size( scheme_depth, partition_depth));
 
 	instance->free = nnl_tree_free;
 	instance->generate_sd_tree = nnl_tree_generate_sd_tree;
@@ -496,8 +439,15 @@ static void nnl_tree_free( nnl_tree_t *self)
 
 int nnl_tree_runtests( void)
 {
-	printf( "Tree size (3): %" PRIu32 "\n", nnl_tree_size( 3));
-	printf( "Offset( 101/3): %" PRIu32 "\n", nnl_tree_offset(0xB0000000));
+	nnl_tree_t *tree = nnl_tree_init( 3, 0);
+	printf( "Tree size (3, 0): %zu\n", nnl_tree_size( 3, 0));
+	printf( "Offset( 101/3): %zu\n", nnl_tree_offset( 0xB0000000, tree));
+	tree->free( tree);
+
+	tree = nnl_tree_init( 5, 2);
+	printf( "Tree size (5, 2): %zu\n", nnl_tree_size( 5, 2));
+	printf( "Offset( 0110/4): %zu\n", nnl_tree_offset( 0x68000000, tree));
+	tree->free( tree);
 
 	nnl_addr_t u = 0xB0000000;
 	nnl_addr_t v = 0xA2D80000;
@@ -562,7 +512,7 @@ int nnl_tree_runtests( void)
 
 	printf( "UV: 0x%" PRIx32 ", U_shift: 0x%x\n", uv.uv, uv.u_shift);
 
-	nnl_tree_t *tree = nnl_tree_init( 5, 0);
+	tree = nnl_tree_init( 5, 0);
 	if( !tree )
 	{
 		printf( "Unable to allocate the toy tree");

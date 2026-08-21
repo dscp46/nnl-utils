@@ -8,12 +8,12 @@
 // Node address (path to the leaf, followed by a terminal '1' bit).
 typedef uint32_t nnl_addr_t;
 
-#ifndef NNL_TREE_DEF
+#ifndef NNL_CONSTS_DEF
 // Number of bits in a nnl_addr_t
 extern const size_t NNL_ADDR_BITS;
 // Tree root address
 extern const nnl_addr_t nnl_root, nnl_invalid;
-#endif	/* NNL_TREE_DEF */
+#endif	/* NNL_CONSTS_DEF */
 
 // Subset-Difference UV structure
 typedef struct nnl_sd nnl_sd_t;
@@ -35,7 +35,7 @@ struct nnl_tree {
 	// Length of node addresses
 	uint8_t scheme_depth;
 	// Revocation tree
-	uint32_t *rvk_tree;
+	size_t *rvk_tree;
 
 	void (*free)( nnl_tree_t *self);
 	void (*generate_sd_tree)( nnl_tree_t *self);

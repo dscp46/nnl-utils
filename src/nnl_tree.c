@@ -184,7 +184,12 @@ static void nnl_tree_revoke_node( nnl_tree_t *self, nnl_addr_t addr)
 	uint32_t mask;
 	nnl_build_mask( addr, &mask, &depth, &shift);
 
+	// SD compromission happens in a dedicated path (TODO: name the function)
 	if( depth != self->scheme_depth )
+		return;
+
+	// Don't revoke a leaf multiple times.
+	if( self->rvk_tree[ nnl_tree_offset( addr, self)] )
 		return;
 
 	do
@@ -571,6 +576,7 @@ int nnl_tree_runtests( void)
 	tree = nnl_tree_init( 5, 2);
 	printf( "Tree size (5, 2): %zu\n", nnl_tree_size( 5, 2));
 	printf( "Offset( 0110/4): %zu\n", nnl_tree_offset( 0x68000000, tree));
+	tree->revoke_node( tree, 0x6C000000); // Leaf 01101
 	tree->revoke_node( tree, 0x6C000000); // Leaf 01101
 	tree->revoke_node( tree, 0xD4000000); // Leaf 11010
 	printf( "Revoked nodes 01101/5 and 11010/5\n");

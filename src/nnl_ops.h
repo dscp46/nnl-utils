@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "nnl_types.h"
 
+nnl_addr_t nnl_addr( size_t path, uint8_t depth);
+
 void nnl_build_mask( nnl_addr_t addr, nnl_addr_t *mask, uint8_t *depth, uint8_t *shift);
 
 size_t nnl_tree_size( uint8_t scheme_depth, uint8_t partition_depth);

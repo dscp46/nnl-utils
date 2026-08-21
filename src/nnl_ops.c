@@ -9,6 +9,21 @@ const nnl_addr_t nnl_root    = (nnl_addr_t)1 << (NNL_ADDR_BITS-1);
 // Invalid address
 const nnl_addr_t nnl_invalid = (nnl_addr_t)0;
 
+nnl_addr_t nnl_addr( size_t path, uint8_t depth)
+{
+	// We need one sentinel bit below the path.
+	if( depth > NNL_ADDR_BITS-1 )
+		return nnl_invalid;
+
+	nnl_addr_t addr = (path << 1) | 1; // Path followed by the sentinel bit
+
+	// Shift the path's MSB to addr's MSB
+	for( size_t i=0; i<(NNL_ADDR_BITS-depth-1); ++i)
+		addr <<= 1;
+
+	return addr;
+}
+
 void nnl_build_mask( nnl_addr_t addr, nnl_addr_t *mask, uint8_t *depth, uint8_t *shift)
 {
 	if( !addr || !mask )

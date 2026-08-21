@@ -459,30 +459,30 @@ int nnl_tree_runtests( void)
 {
 	nnl_tree_t *tree = nnl_tree_init( 3, 0);
 	printf( "Tree size (3, 0): %zu\n", nnl_tree_size( 3, 0));
-	printf( "Offset( 101/3): %zu\n", nnl_tree_offset( 0xB0000000, tree));
+	printf( "Offset( 101/3): %zu\n", nnl_tree_offset( nnl_addr( 0b101, 3), tree));
 	tree->free( tree);
 
-	nnl_addr_t u = 0xB0000000;
-	nnl_addr_t v = 0xA2D80000;
+	nnl_addr_t u = nnl_addr( 0b101, 3);
+	nnl_addr_t v = nnl_addr( 0b101000101101, 12);
 	nnl_addr_t u_prime, v_prime;
 	nnl_sd_t uv;
 
-	if( nnl_left( nnl_root) != ( (nnl_addr_t)1 << ((8*sizeof(nnl_addr_t)-2)) ) )
+	if( nnl_left( nnl_root) != nnl_addr( 0b0, 1) )
 	{
 		fprintf( stderr, 
 			"nnl_left( root) failed. Got %" PRIx32 ", expected %" PRIx32 "\n",
 			nnl_left( nnl_root),
-		       (nnl_addr_t)1 << ((8*sizeof(nnl_addr_t)-2))
+			nnl_addr( 0b0, 1)
 		);
 		return 0;
 	}
 
-	if( nnl_right( nnl_root) != ( (nnl_addr_t)3 << ((8*sizeof(nnl_addr_t)-2)) ) )
+	if( nnl_right( nnl_root) != nnl_addr( 0b1, 1) )
 	{
 		fprintf( stderr, 
 			"nnl_left( root) failed. Got %" PRIx32 ", expected %" PRIx32 "\n",
 			nnl_left( nnl_root),
-		       (nnl_addr_t)3 << ((8*sizeof(nnl_addr_t)-2))
+			nnl_addr( 0b1, 1)
 		);
 		return 0;
 	}
@@ -511,15 +511,15 @@ int nnl_tree_runtests( void)
 		return 0;
 	}
 
-	if((u = nnl_parent( nnl_parent( 0xD4000000))) != 0xD0000000 )
+	if((u = nnl_parent( nnl_parent( nnl_addr( 0b11010, 5)))) != nnl_addr( 0b110, 3))
 	{
-		fprintf( stderr, "nnl_parent failed to determine the grandparent of 0xD4000000 (got %08" PRIx32 ", expected %08" PRIx32").\n", u, 0xD0000000);
+		fprintf( stderr, "nnl_parent failed to determine the grandparent of 0xD4000000 (got %08" PRIx32 ", expected %08" PRIx32").\n", u, nnl_addr( 0b110, 3));
 		return 0;
 	}
 
-	if((u = nnl_opposite_branch( 0xDC000000)) != 0xD4000000 )
+	if((u = nnl_opposite_branch( nnl_addr( 0b11011, 5))) != nnl_addr( 0b11010, 5))
 	{
-		fprintf( stderr, "nnl_opposite_branch failed: got %08" PRIx32 ", expected %08" PRIx32").\n", u, 0xD4000000);
+		fprintf( stderr, "nnl_opposite_branch failed: got %08" PRIx32 ", expected %08" PRIx32").\n", u, nnl_addr( 0b11010, 5));
 		return 0;
 	}
 
@@ -532,7 +532,7 @@ int nnl_tree_runtests( void)
 		return 0;
 	}
 
-	tree->revoke_node( tree, 0x04000000); // Leaf 00000
+	tree->revoke_node( tree, nnl_addr( 0b00000, 5));
 	tree->print_rvk( tree);
 	tree->generate_sd_tree( tree);
 	tree->free( tree);
@@ -544,7 +544,7 @@ int nnl_tree_runtests( void)
 		printf( "Unable to allocate the toy tree");
 		return 0;
 	}
-	tree->revoke_node( tree, 0x4C000000); // Leaf 01001
+	tree->revoke_node( tree, nnl_addr( 0b01001, 5));
 	tree->print_rvk( tree);
 	tree->generate_sd_tree( tree);
 	tree->free( tree);
@@ -557,17 +557,17 @@ int nnl_tree_runtests( void)
 		return 0;
 	}
 
-	tree->revoke_node( tree, 0x04000000); // Leaf 00000
-	tree->revoke_node( tree, 0x1C000000); // Leaf 00011
-	tree->revoke_node( tree, 0x24000000); // Leaf 00100
-	tree->revoke_node( tree, 0x4C000000); // Leaf 01001
-	tree->revoke_node( tree, 0x74000000); // Leaf 01110
-	tree->revoke_node( tree, 0x7C000000); // Leaf 01111
-	tree->revoke_node( tree, 0xDC000000); // Leaf 11011
-	tree->revoke_node( tree, 0xE4000000); // Leaf 11100
-	tree->revoke_node( tree, 0xEC000000); // Leaf 11101
-	tree->revoke_node( tree, 0xF4000000); // Leaf 11110
-	tree->revoke_node( tree, 0xFC000000); // Leaf 11111
+	tree->revoke_node( tree, nnl_addr( 0b00000, 5));
+	tree->revoke_node( tree, nnl_addr( 0b00011, 5));
+	tree->revoke_node( tree, nnl_addr( 0b00100, 5));
+	tree->revoke_node( tree, nnl_addr( 0b01001, 5));
+	tree->revoke_node( tree, nnl_addr( 0b01110, 5));
+	tree->revoke_node( tree, nnl_addr( 0b01111, 5));
+	tree->revoke_node( tree, nnl_addr( 0b11011, 5));
+	tree->revoke_node( tree, nnl_addr( 0b11100, 5));
+	tree->revoke_node( tree, nnl_addr( 0b11101, 5));
+	tree->revoke_node( tree, nnl_addr( 0b11110, 5));
+	tree->revoke_node( tree, nnl_addr( 0b11111, 5));
 
 	tree->print_rvk( tree);
 	tree->generate_sd_tree( tree);
@@ -575,10 +575,10 @@ int nnl_tree_runtests( void)
 
 	tree = nnl_tree_init( 5, 2);
 	printf( "Tree size (5, 2): %zu\n", nnl_tree_size( 5, 2));
-	printf( "Offset( 0110/4): %zu\n", nnl_tree_offset( 0x68000000, tree));
-	tree->revoke_node( tree, 0x6C000000); // Leaf 01101
-	tree->revoke_node( tree, 0x6C000000); // Leaf 01101
-	tree->revoke_node( tree, 0xD4000000); // Leaf 11010
+	printf( "Offset( 0110/4): %zu\n", nnl_tree_offset( nnl_addr( 0b0110, 4), tree));
+	tree->revoke_node( tree, nnl_addr( 0b01101, 5));
+	tree->revoke_node( tree, nnl_addr( 0b01101, 5)); // validate idempotence
+	tree->revoke_node( tree, nnl_addr( 0b11010, 5));
 	printf( "Revoked nodes 01101/5 and 11010/5\n");
 	tree->print_rvk( tree);
 	tree->generate_sd_tree( tree);

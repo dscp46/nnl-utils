@@ -232,8 +232,17 @@ static void nnl_tree_generate_sd_tree( nnl_tree_t *self)
 	// */
 	addr_item_t *stack = NULL, *cur_it;
 
-	// FIXME: if self->partition_depth is non zero, add every subroot
-	STACK_PUSH( stack, addr_item_new( nnl_root, stack));
+	// Insert tree root / subroots
+	size_t nb_partitions = (size_t)1 << self->partition_depth;
+	//for( size_t n=0; n<nb_partitions; ++n)
+	for( size_t n=nb_partitions; n>0; n--)
+	{
+		i = n-1;
+		for( size_t j=0; j<(NNL_ADDR_BITS-self->partition_depth); ++j)
+			i <<= 1;
+		cur = (nnl_root >> self->partition_depth) | i;
+		STACK_PUSH( stack, addr_item_new( cur, stack));
+	}
 
 	while(!STACK_EMPTY( stack))
 	{
@@ -448,15 +457,6 @@ int nnl_tree_runtests( void)
 	printf( "Offset( 101/3): %zu\n", nnl_tree_offset( 0xB0000000, tree));
 	tree->free( tree);
 
-	tree = nnl_tree_init( 5, 2);
-	printf( "Tree size (5, 2): %zu\n", nnl_tree_size( 5, 2));
-	printf( "Offset( 0110/4): %zu\n", nnl_tree_offset( 0x68000000, tree));
-	tree->revoke_node( tree, 0x6C000000); // Leaf 01101
-	tree->revoke_node( tree, 0xD4000000); // Leaf 11010
-	printf( "Revoked nodes 01101/5 and 11010/5\n");
-	tree->print_rvk( tree);
-	tree->free( tree);
-
 	nnl_addr_t u = 0xB0000000;
 	nnl_addr_t v = 0xA2D80000;
 	nnl_addr_t u_prime, v_prime;
@@ -564,6 +564,16 @@ int nnl_tree_runtests( void)
 	tree->revoke_node( tree, 0xF4000000); // Leaf 11110
 	tree->revoke_node( tree, 0xFC000000); // Leaf 11111
 
+	tree->print_rvk( tree);
+	tree->generate_sd_tree( tree);
+	tree->free( tree);
+
+	tree = nnl_tree_init( 5, 2);
+	printf( "Tree size (5, 2): %zu\n", nnl_tree_size( 5, 2));
+	printf( "Offset( 0110/4): %zu\n", nnl_tree_offset( 0x68000000, tree));
+	tree->revoke_node( tree, 0x6C000000); // Leaf 01101
+	tree->revoke_node( tree, 0xD4000000); // Leaf 11010
+	printf( "Revoked nodes 01101/5 and 11010/5\n");
 	tree->print_rvk( tree);
 	tree->generate_sd_tree( tree);
 	tree->free( tree);

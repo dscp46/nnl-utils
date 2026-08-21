@@ -53,7 +53,7 @@ int nnl_encode_uv( nnl_addr_t u, nnl_addr_t v, nnl_sd_t *sd)
 	if( !u || !v || !sd )
 		return 0;
 
-	uint32_t u_mask, v_mask;
+	nnl_addr_t u_mask, v_mask;
 	nnl_build_mask( u, &u_mask, NULL, &(sd->u_shift));
 	nnl_build_mask( v, &v_mask, NULL, NULL);
 
@@ -181,7 +181,7 @@ static void nnl_tree_revoke_node( nnl_tree_t *self, nnl_addr_t addr)
 	if( !self || addr == nnl_invalid )
 		return;
 	uint8_t depth, shift;
-	uint32_t mask;
+	nnl_addr_t mask;
 	nnl_build_mask( addr, &mask, &depth, &shift);
 
 	// SD compromission happens in a dedicated path (TODO: name the function)

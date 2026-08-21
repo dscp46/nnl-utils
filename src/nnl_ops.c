@@ -17,7 +17,7 @@ void nnl_build_mask( nnl_addr_t addr, nnl_addr_t *mask, uint8_t *depth, uint8_t 
 	*mask = (nnl_addr_t) -1;
 
 	if( depth )
-		*depth = 32; // FIXME: base on nnl_addr_t bit size?
+		*depth = NNL_ADDR_BITS;
 
 	if( shift )
 		*shift = 0;
@@ -115,7 +115,7 @@ uint8_t nnl_depth( nnl_addr_t u)
 {
 	// assert( u != nnl_invalid );
 	uint8_t depth;
-	uint32_t mask;
+	nnl_addr_t mask;
 	nnl_build_mask( u, &mask, &depth, NULL);
 
 	return depth;
@@ -124,6 +124,6 @@ uint8_t nnl_depth( nnl_addr_t u)
 size_t nnl_nb_leaves( nnl_addr_t u, uint8_t scheme_depth)
 {
 	// assert( scheme_depth < 8*sizeof(nnl_addr_t) );
-	return (uint32_t)1 << ( scheme_depth - nnl_depth(u) );
+	return (size_t)1 << ( scheme_depth - nnl_depth(u) );
 }
 

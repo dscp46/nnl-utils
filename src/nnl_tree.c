@@ -423,7 +423,7 @@ int nnl_emit_device_keys( hsm_t *hsm, nnl_tree_t *tree, nnl_addr_t addr, size_t 
 
 nnl_tree_t* nnl_tree_init( uint8_t scheme_depth, uint8_t partition_depth)
 {
-	if( scheme_depth < 2 || scheme_depth >= 31 || (partition_depth >= (scheme_depth-2)) )
+	if( scheme_depth < 2 || scheme_depth >= NNL_ADDR_BITS || (partition_depth >= (scheme_depth-2)) )
 		return NULL;
 
 	nnl_tree_t *instance = (nnl_tree_t*) malloc( sizeof( nnl_tree_t));

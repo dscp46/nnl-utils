@@ -211,6 +211,12 @@ static void nnl_tree_revoke_node( nnl_tree_t *self, nnl_addr_t addr)
 
 static void nnl_tree_emit_sd( nnl_addr_t u, nnl_addr_t v, nnl_tree_t *self)
 {
+	if( u == nnl_invalid || v == nnl_invalid )
+		return;
+
+	nnl_addr_t mask;
+	uint8_t cur_depth, v_depth;
+
 	nnl_sd_t uv;
 	nnl_encode_uv( u, v, &uv);
 	printf( "Emit T[%08"PRIx32"] \\ T[%08"PRIx32"] AKA T%2zu\\T%2zu. UV = %08"PRIx32", U_shift = 0x%02x\n",
@@ -219,7 +225,27 @@ static void nnl_tree_emit_sd( nnl_addr_t u, nnl_addr_t v, nnl_tree_t *self)
 		uv.uv, uv.u_shift
 	);
 	// TODO: check if associated Dk is compromised
-	//
+
+	nnl_build_mask( u, &mask, &cur_depth, NULL);
+	nnl_build_mask( v, &mask, &v_depth, NULL);
+
+	printf( "Kp := Ks_{%zu}", nnl_tree_offset( u, self)+1);
+	while( cur_depth++ != v_depth )
+	{
+		switch( nnl_child_direction( uv.uv, cur_depth) )
+		{
+		case NNL_DIR_LEFT:
+			printf( " -> Gl");
+			break;
+		case NNL_DIR_RIGHT:
+			printf( " -> Gr");
+			break;
+		default:
+			printf( " (aborted on error)\n");
+		}
+	}
+
+	printf( " -> Gp\n");
 }
 
 static void nnl_tree_generate_sd_tree( nnl_tree_t *self)

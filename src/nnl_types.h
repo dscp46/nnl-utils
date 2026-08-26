@@ -28,6 +28,12 @@ typedef enum {
 	NNL_ST_REVOKED
 } nnl_state_t;
 
+typedef enum {
+	NNL_DIR_LEFT = 0,
+	NNL_DIR_RIGHT = 1,
+	NNL_DIR_INVALID,
+} nnl_dir_t;
+
 typedef struct nnl_tree nnl_tree_t;
 struct nnl_tree {
 	// Depth of the partition roots.

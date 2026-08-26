@@ -125,6 +125,31 @@ int nnl_is_parent( nnl_addr_t u, nnl_addr_t v)
 	return ((u & u_mask) == (v & u_mask)) && (u_mask < v_mask);
 }
 
+nnl_dir_t nnl_child_direction( nnl_addr_t v, uint8_t depth)
+{
+	if( v == nnl_invalid)
+		return NNL_DIR_INVALID;
+
+	nnl_addr_t mask;
+	uint8_t u_shift, v_depth, v_shift;
+	nnl_build_mask( v, &mask, &v_depth, &v_shift);
+
+	if( depth > v_depth )
+		return NNL_DIR_INVALID;
+
+	u_shift = NNL_ADDR_BITS-depth;
+	mask = (nnl_addr_t)-1;
+	while( u_shift-- )
+		mask <<= 1;
+
+	// If the deepest bit of our path is asserted, branch right
+	mask &= ~( mask << 1);
+	if( v & mask )
+		return NNL_DIR_RIGHT;
+
+	// Branch left otherwise
+	return NNL_DIR_LEFT;
+}
 
 uint8_t nnl_depth( nnl_addr_t u)
 {

@@ -134,7 +134,7 @@ nnl_dir_t nnl_child_direction( nnl_addr_t v, uint8_t depth)
 	uint8_t u_shift, v_depth, v_shift;
 	nnl_build_mask( v, &mask, &v_depth, &v_shift);
 
-	if( depth > v_depth )
+	if( depth > v_depth || !depth )
 		return NNL_DIR_INVALID;
 
 	u_shift = NNL_ADDR_BITS-depth;
